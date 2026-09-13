@@ -3,12 +3,12 @@ name: sketchup-modeling
 description: >-
   Control a local SketchUp model from Codex through the installed OpenSU/SketchUp MCP
   extension. Use whenever the user asks Codex to create, reconstruct from drawings/PDFs,
-  modify, inspect, organize, repair, materialize, or validate architectural SketchUp
-  geometry from natural language. Supports auditable Plan Spec reconstruction, levels,
-  rectangular or polygon floors/ceilings, slab and roof openings, walls, columns, beams,
-  straight/L/U stairs, flat roofs, door/window assemblies, glass curtain walls/storefronts,
-  materials, Tags, transforms, duplication, safe batch operations, controlled deletion,
-  dimensions, and model QA.
+  combine plans/elevations/sections, modify, inspect, organize, repair, materialize, or
+  validate architectural SketchUp geometry from natural language. Supports auditable
+  Plan Spec reconstruction, cross-sheet evidence fusion, levels, rectangular or polygon
+  floors/ceilings, slab and roof openings, walls, columns, beams, straight/L/U stairs,
+  flat roofs, door/window assemblies, glass curtain walls/storefronts, materials, Tags,
+  transforms, duplication, safe batch operations, controlled deletion, dimensions, and QA.
 ---
 
 # SketchUp Modeling
@@ -20,6 +20,7 @@ Use the bundled scripts as deterministic bridges to the installed SketchUp exten
 - `scripts/opensu_edit.py` — single-entity semantic edits.
 - `scripts/opensu_repair.py` — search, diagnosis, batch repair, controlled deletion.
 - `scripts/opensu_plan.py` — lint and execute drawing-derived Plan Spec JSON.
+- `scripts/opensu_multisheet.py` — reconcile evidence across plans/elevations/sections/details.
 
 Resolve scripts relative to this Skill directory. Do not copy them into the user's project
 and do not write ad-hoc socket/Ruby code when an exposed command already exists.
@@ -59,17 +60,60 @@ Use this workflow:
 15. repair only localized errors with edit/repair tools
 16. report which dimensions were exact, derived, estimated, or unresolved
 
-Evidence priority for drawing reconstruction:
+Evidence priority for single-sheet reconstruction:
 
 1. printed dimensions / written levels
 2. grid and chained dimensions
 3. repeated confirmed modules
-4. drawing scale when the source has not been unpredictably resized
-5. geometry derived from other exact dimensions
+4. geometry derived from other exact dimensions
+5. calibrated drawing scale when the source has not been unpredictably resized
 6. pixel/visual estimation only with explicit permission for approximation
 
 Never silently resolve contradictory dimensions. Never treat a resized screenshot's printed
 scale as reliable without calibration to at least one known dimension.
+
+## Multi-sheet plan + elevation + section reconstruction
+
+When more than one drawing contributes to the model, read
+`references/multisheet-fusion.md` and create a **Multi-Sheet Pack** in addition to the Plan
+Spec. Do not merely say that multiple drawings were considered; encode the evidence.
+
+Use this workflow:
+
+1. inventory each source page/image as a sheet with stable `sheet_id`, `kind`, title, page,
+   revision, and source filename when known
+2. use plans primarily for XY/grid/wall/opening offsets
+3. use elevations and sections primarily for Z, heights, sill/head levels, floor-to-floor,
+   roof/parapet, ceiling and stair relationships
+4. use details/schedules for local exact sizes when they map to the same entity/type
+5. build the final Plan Spec normally
+6. add cross-sheet claims for critical dimensions using stable semantic target paths
+7. run `python scripts/opensu_multisheet.py check <pack.json>`
+8. if `blocking_conflicts` is non-empty, do not model; report the exact target, sheets,
+   values, and tolerance
+9. if `blocking_uncertainties` is non-empty, do not model unless the user resolves or
+   explicitly authorizes those approximations
+10. once cross-sheet checks pass, extract/use the embedded `plan_spec`
+11. run normal `opensu_plan.py lint`
+12. only then execute the Plan Spec against SketchUp
+13. inspect, validate, diagnose, and repair as usual
+
+Cross-sheet evidence authority, strongest first:
+
+1. `printed_dimension`
+2. `grid_or_dimension_chain`
+3. `explicit_detail`
+4. `derived_from_exact`
+5. `calibrated_scale`
+6. `pixel_estimate`
+
+Only the strongest available claims resolve a target. Lower-priority disagreement may warn,
+but cannot override stronger evidence. If two strongest claims disagree beyond tolerance,
+that is a blocking conflict; never average them into a fake answer.
+
+Typical 4S/dealership multi-sheet cross-check targets include overall showroom width/depth,
+structural grid spacing, showroom facade height, floor-to-floor levels, entrance size,
+curtain-wall module/height, workshop door size, stair void/rise, and parapet/brand fascia.
 
 ## Plan Spec commands
 
@@ -88,6 +132,30 @@ By default, Plan execution also refuses root names that already exist in SketchU
 use `--allow-existing-names` merely to suppress a collision; inspect and resolve the naming
 or scope conflict first.
 
+## Multi-Sheet commands
+
+```text
+python scripts/opensu_multisheet.py template
+python scripts/opensu_multisheet.py check multisheet-pack.json
+```
+
+The checker verifies sheet references, evidence basis/confidence, strongest-source agreement,
+Plan Spec numeric agreement, and blocking conflicts. It also reports blocking uncertainties
+separately. A structurally valid pack with a blocking uncertainty is still **not ready for
+SketchUp execution** until that uncertainty is resolved or explicitly approved by the user.
+
+Target claims by stable name, for example:
+
+```text
+walls.Wall_South_001.height_mm
+walls.Wall_South_001.end_mm[0]
+openings.Door_Main_Opening_001.width_mm
+levels.Level_02.elevation_mm
+curtain_walls.CurtainWall_Showroom_001.height_mm
+```
+
+Never target unstable list positions such as `walls[3]`.
+
 The Plan Spec may describe:
 
 - levels
@@ -103,8 +171,8 @@ The Plan Spec may describe:
 - materials
 - Tag assignments
 
-Use the example at `references/examples/showroom-plan-v1.json` as a structural reference,
-not as a source of dimensions for the user's project.
+Use the examples in `references/examples/` as structural references only, never as sources
+of dimensions for the user's project.
 
 ## General modeling workflow
 
@@ -192,7 +260,7 @@ non-OpenSU user geometry.
 
 - Level metadata is model-level data; do not fake storeys with labels only.
 - Wall thickness is centered on the supplied wall centerline.
-- Preserve a deliberate wall start/end direction because opening offsets are measured from start.
+- Preserve deliberate wall start/end direction because opening offsets are measured from start.
 - Keep column centers on explicit grid intersections when a structural grid exists.
 - Beam start/end coordinates represent the bottom centerline and should share Z.
 - Door/window assemblies read opening metadata from the wall; do not guess rotation.
@@ -256,8 +324,10 @@ python scripts/opensu_repair.py delete-confirmed ...
 ## References
 
 - `references/drawing-reconstruction.md` — drawing/PDF evidence and reconstruction rules.
+- `references/multisheet-fusion.md` — plan/elevation/section/detail fusion rules.
 - `references/plan-spec.schema.json` — Plan Spec v1 structural contract.
-- `references/examples/showroom-plan-v1.json` — example only.
+- `references/examples/showroom-plan-v1.json` — single-sheet-style Plan Spec example.
+- `references/examples/showroom-multisheet-pack-v1.json` — multi-sheet 4S-style example.
 - `references/tool-contract.md` — core command details.
 - `references/advanced-geometry.md` — advanced geometry details.
 
@@ -265,8 +335,9 @@ python scripts/opensu_repair.py delete-confirmed ...
 
 - Never use arbitrary Ruby execution or invent unsupported SketchUp capabilities.
 - Keep architecture in named Groups/Components rather than loose root geometry.
-- Plan Spec v1 is an interpretation/execution layer; it does not magically make an unreadable
-  drawing reliable. Preserve uncertainty instead of inventing dimensions.
+- Plan Spec and Multi-Sheet Pack are interpretation/execution layers; they do not make an
+  unreadable drawing reliable. Preserve uncertainty instead of inventing dimensions.
+- Never average contradictory authoritative drawing dimensions to manufacture a result.
 - Semantic transforms/batch transforms are restricted to OpenSU Groups.
 - Controlled deletion requires exact-id + exact-name confirmation.
 - Straight, L-shaped, and U-shaped stairs are supported; spiral/multi-landing stairs are not.
