@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "default_tolerance_mm": 5,
+  "sheets": [
+    {
+      "sheet_id": "A-101",
+      "kind": "plan",
+      "title": "Level 01 Plan",
+      "source": "dealer-set.pdf",
+      "page": 3,
+      "revision": "C"
+    },
+    {
+      "sheet_id": "A-201",
+      "kind": "elevation",
+      "title": "South Elevation",
+      "source": "dealer-set.pdf",
+      "page": 8,
+      "revision": "C"
+    },
+    {
+      "sheet_id": "A-301",
+      "kind": "section",
+      "title": "Section A-A",
+      "source": "dealer-set.pdf",
+      "page": 11,
+      "revision": "C"
+    },
+    {
+      "sheet_id": "A-601",
+      "kind": "schedule",
+      "title": "Door Schedule",
+      "source": "dealer-set.pdf",
+      "page": 17,
+      "revision": "C"
+    }
+  ],
+  "plan_spec": {
+    "schema_version": 1,
+    "project": {
+      "name": "4S Showroom Multi-Sheet Example",
+      "units": "mm"
+    },
+    "uncertainties": [],
+    "levels": [
+      {
+        "name": "Level_01",
+        "elevation_mm": 0,
+        "floor_to_floor_mm": 4500
+      },
+      {
+        "name": "Level_02",
+        "elevation_mm": 4500,
+        "floor_to_floor_mm": 4200
+      }
+    ],
+    "floors": [
+      {
+        "name": "Floor_Level01_001",
+        "shape": "rect",
+        "origin_mm": [0, 0, 0],
+        "width_mm": 24000,
+        "depth_mm": 18000,
+        "thickness_mm": 150,
+        "level_name": "Level_01"
+      }
+    ],
+    "columns": [
+      {
+        "name": "Column_A1_001",
+        "center_mm": [6000, 6000, 150],
+        "width_mm": 500,
+        "depth_mm": 500,
+        "height_mm": 4350,
+        "level_name": "Level_01"
+      }
+    ],
+    "beams": [],
+    "walls": [
+      {
+        "name": "Wall_South_001",
+        "start_mm": [0, 0, 150],
+        "end_mm": [24000, 0, 150],
+        "height_mm": 4200,
+        "thickness_mm": 200,
+        "level_name": "Level_01"
+      }
+    ],
+    "openings": [
+      {
+        "name": "Door_Main_Opening_001",
+        "wall_name": "Wall_South_001",
+        "opening_type": "door",
+        "offset_mm": 2100,
+        "width_mm": 1800,
+        "height_mm": 2400,
+        "sill_height_mm": 0
+      }
+    ],
+    "curtain_walls": [
+      {
+        "name": "CurtainWall_Showroom_001",
+        "start_mm": [4200, -120, 150],
+        "end_mm": [22500, -120, 150],
+        "height_mm": 4050,
+        "target_bay_width_mm": 1500,
+        "target_bay_height_mm": 2025,
+        "mullion_width_mm": 60,
+        "transom_width_mm": 60,
+        "frame_depth_mm": 120,
+        "level_name": "Level_01"
+      }
+    ],
+    "ceilings": [],
+    "stairs": [],
+    "roofs": [],
+    "slab_openings": [],
+    "materials": [],
+    "tags": []
+  },
+  "claims": [
+    {
+      "claim_id": "C-001",
+      "target": "floors.Floor_Level01_001.width_mm",
+      "value": 24000,
+      "sheet_id": "A-101",
+      "basis": "printed_dimension",
+      "confidence": "high",
+      "axis_role": "xy"
+    },
+    {
+      "claim_id": "C-002",
+      "target": "floors.Floor_Level01_001.depth_mm",
+      "value": 18000,
+      "sheet_id": "A-101",
+      "basis": "grid_or_dimension_chain",
+      "confidence": "high",
+      "axis_role": "xy"
+    },
+    {
+      "claim_id": "C-003",
+      "target": "levels.Level_02.elevation_mm",
+      "value": 4500,
+      "sheet_id": "A-301",
+      "basis": "printed_dimension",
+      "confidence": "high",
+      "axis_role": "z"
+    },
+    {
+      "claim_id": "C-004",
+      "target": "walls.Wall_South_001.height_mm",
+      "value": 4200,
+      "sheet_id": "A-201",
+      "basis": "printed_dimension",
+      "confidence": "high",
+      "axis_role": "z"
+    },
+    {
+      "claim_id": "C-005",
+      "target": "walls.Wall_South_001.height_mm",
+      "value": 4200,
+      "sheet_id": "A-301",
+      "basis": "printed_dimension",
+      "confidence": "high",
+      "axis_role": "z"
+    },
+    {
+      "claim_id": "C-006",
+      "target": "openings.Door_Main_Opening_001.width_mm",
+      "value": 1800,
+      "sheet_id": "A-101",
+      "basis": "printed_dimension",
+      "confidence": "high",
+      "axis_role": "xy"
+    },
+    {
+      "claim_id": "C-007",
+      "target": "openings.Door_Main_Opening_001.width_mm",
+      "value": 1800,
+      "sheet_id": "A-601",
+      "basis": "printed_dimension",
+      "confidence": "high",
+      "axis_role": "xy"
+    },
+    {
+      "claim_id": "C-008",
+      "target": "openings.Door_Main_Opening_001.height_mm",
+      "value": 2400,
+      "sheet_id": "A-201",
+      "basis": "printed_dimension",
+      "confidence": "high",
+      "axis_role": "z"
+    },
+    {
+      "claim_id": "C-009",
+      "target": "openings.Door_Main_Opening_001.height_mm",
+      "value": 2400,
+      "sheet_id": "A-601",
+      "basis": "printed_dimension",
+      "confidence": "high",
+      "axis_role": "z"
+    },
+    {
+      "claim_id": "C-010",
+      "target": "curtain_walls.CurtainWall_Showroom_001.height_mm",
+      "value": 4050,
+      "sheet_id": "A-201",
+      "basis": "printed_dimension",
+      "confidence": "high",
+      "axis_role": "z"
+    },
+    {
+      "claim_id": "C-011",
+      "target": "curtain_walls.CurtainWall_Showroom_001.height_mm",
+      "value": 4047,
+      "sheet_id": "A-101",
+      "basis": "calibrated_scale",
+      "confidence": "medium",
+      "axis_role": "z",
+      "tolerance_mm": 15
+    }
+  ],
+  "uncertainties": []
+}
