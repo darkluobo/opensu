@@ -8,7 +8,7 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = ROOT / "dist" / "opensu-sketchup-mcp-phase4-edit-repair.rbz"
+DEFAULT_OUTPUT = ROOT / "dist" / "opensu-sketchup-mcp-phase4-auto-repair.rbz"
 
 
 def build_rbz(output: Path = DEFAULT_OUTPUT) -> Path:
