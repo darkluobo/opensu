@@ -7,7 +7,7 @@ description: >-
   including levels, rectangular or polygon floors/ceilings, slab and roof openings,
   walls, columns, beams, straight/L/U stairs with landings, flat roofs, door/window
   assemblies, glass curtain walls/storefronts, materials, Tags, transforms, duplication,
-  visibility, dimensions, and model QA.
+  safe batch operations, controlled deletion, dimensions, and model QA.
 ---
 
 # SketchUp Modeling
@@ -16,7 +16,8 @@ Use the bundled scripts as deterministic bridges to the installed SketchUp exten
 
 - `scripts/opensu.py` for the stable core toolset.
 - `scripts/opensu_advanced.py` for L/U stairs, slab/roof openings, and polygon slabs/ceilings.
-- `scripts/opensu_edit.py` for safe non-destructive editing and repair.
+- `scripts/opensu_edit.py` for single-entity non-destructive edits.
+- `scripts/opensu_repair.py` for search, diagnosis, batch repair, and controlled deletion.
 
 Resolve scripts relative to this Skill directory. Do not copy them into the user's project
 and do not write ad-hoc socket/Ruby code when an exposed command already exists.
@@ -48,36 +49,70 @@ Normally execute in this order:
 11. materials and Tags
 12. inspect
 13. validate
-14. repair with the edit bridge when needed
-15. inspect and validate again
+14. if validation fails, diagnose the exact entities
+15. apply the smallest targeted repair
+16. inspect and validate again
 
 Use stable semantic names such as `Level_01`, `Floor_Level01_001`, `Ceiling_Level01_001`,
 `Column_A01_001`, `Beam_A01_B01_001`, `Wall_South_001`, `Door_South_001`,
 `Window_East_001`, `Stair_L_L01_L02_001`, `CurtainWall_Showroom_001`, and `Roof_Main_001`.
 
-## Edit and repair workflow
+## Repair workflow
 
-Prefer targeted edits over rebuilding the entire model when geometry is basically correct.
+When an existing model is wrong, do not immediately rebuild it. Use this sequence:
+
+1. `opensu_repair.py diagnose`
+2. inspect the returned issue, matched entity id/name, and repair hint
+3. use `opensu_repair.py find` when a broader type/name/tag query is needed
+4. apply a single edit or a batch edit
+5. inspect
+6. validate
+7. repeat only for remaining errors
+
+Use batch commands when several known entities need the same operation. A batch is one
+SketchUp undoable operation, so the user can undo it from SketchUp if needed.
+
+## Single-entity editing
+
 Use `opensu_edit.py` for:
 
-- `rename`: fix unstable or ambiguous root names.
-- `set-tag`: organize complete Groups/Components on SketchUp Tags; never tag raw edges/faces.
-- `set-visible`: temporarily hide/show complete root entities.
-- `transform`: move and/or rotate one OpenSU Group while synchronizing stored semantic coordinates.
-- `duplicate`: copy one OpenSU Group with a new unique name and optional offset/rotation.
+- `rename`: rename one root Group/Component.
+- `set-tag`: assign a SketchUp Tag to one root Group/Component.
+- `set-visible`: show/hide one root entity.
+- `transform`: move/rotate one OpenSU Group while synchronizing semantic coordinates.
+- `duplicate`: copy one OpenSU Group with a unique name and optional offset/rotation.
 
-Important transform rules:
+After any transform or duplicate, run `inspect` and `validate` immediately.
 
-- Transform only when the whole semantic object should move/rotate as one unit.
-- The extension transforms geometry inside the OpenSU Group instead of adding a root
-  transformation, then updates stored point metadata (`origin/start/end/center/polygon points`).
-- For a wall, this keeps later opening operations aligned with the moved/rotated wall.
-- After every transform or duplicate, immediately run `inspect` and `validate`.
-- Prefer cardinal/explicit angles. Do not repeatedly rotate an object by tiny corrective
-  angles unless the user explicitly requests that precision.
-- Do not use edit tools on loose faces/edges; they intentionally target root Groups/Components.
-- Destructive deletion is not exposed in the current Codex Skill. Preserve user work;
-  hide an unwanted object and report it when removal is requested but not yet safely exposed.
+## Batch repair
+
+Use `opensu_repair.py` for:
+
+- `find`: filter root Groups/Components by name fragment, OpenSU type, Tag, or visibility.
+- `diagnose`: run validation and map messages back to named root entities when possible.
+- `batch-tag`: assign one Tag to multiple known root entities.
+- `batch-visible`: show/hide multiple known root entities.
+- `batch-transform`: apply one translation/Z rotation to multiple OpenSU Groups while
+  synchronizing semantic coordinates for each object.
+
+Do not batch-transform mixed non-OpenSU content. Resolve the exact target ids first.
+
+## Controlled deletion
+
+Deletion is exposed only through `opensu_repair.py delete-confirmed` and is intentionally
+hard to trigger. Use it only when the user explicitly asks to delete/remove an object or
+when the user has explicitly authorized removal as part of a repair.
+
+Before deleting:
+
+1. inspect or find the target
+2. capture its `entity_id` and exact current name
+3. confirm the target is an OpenSU semantic root entity
+4. call delete with all three: entity id, exact confirm name, and the explicit confirmation flag
+5. inspect and validate immediately afterward
+
+Never infer a delete target from a partial name. Never delete loose faces/edges or arbitrary
+non-OpenSU user geometry. If intent is ambiguous, hide the object or ask the user instead.
 
 ## Levels and multi-storey reasoning
 
@@ -105,26 +140,18 @@ Important transform rules:
 - When a wall has multiple openings, always pass `--opening-name` to the assembly command.
 - For large glazed showroom/dealership fronts, prefer `create-curtain-wall`.
 
-## Stairs and circulation
-
-Choose the stair tool matching the requested circulation:
+## Stairs and roofs
 
 - `opensu.py create-stair`: one straight flight.
 - `opensu_advanced.py create-l-stair`: two flights with one 90-degree landing.
 - `opensu_advanced.py create-u-stair`: two return flights with one 180-degree landing.
-
-Use a floor opening when a stair passes through an upper slab. Reject stair results with
-impractical tread depth or validation errors.
-
-## Roofs
-
+- Use a floor opening when a stair passes through an upper slab.
 - `create-flat-roof` creates a rectangular roof slab and optional four-sided parapets.
 - Use `create-slab-opening` against the flat-roof group for rectangular skylight/roof access openings.
-- Pitched roofs remain outside the current toolset.
 
 ## Commands
 
-Core bridge:
+Core:
 
 ```text
 python scripts/opensu.py status
@@ -145,7 +172,7 @@ python scripts/opensu.py apply-material ...
 python scripts/opensu.py validate
 ```
 
-Advanced bridge:
+Advanced geometry:
 
 ```text
 python scripts/opensu_advanced.py create-l-stair ...
@@ -155,7 +182,7 @@ python scripts/opensu_advanced.py create-polygon-slab ...
 python scripts/opensu_advanced.py create-polygon-ceiling ...
 ```
 
-Edit/repair bridge:
+Single edit:
 
 ```text
 python scripts/opensu_edit.py rename ...
@@ -165,29 +192,28 @@ python scripts/opensu_edit.py transform ...
 python scripts/opensu_edit.py duplicate ...
 ```
 
+Repair/batch:
+
+```text
+python scripts/opensu_repair.py find ...
+python scripts/opensu_repair.py diagnose ...
+python scripts/opensu_repair.py batch-tag ...
+python scripts/opensu_repair.py batch-visible ...
+python scripts/opensu_repair.py batch-transform ...
+python scripts/opensu_repair.py delete-confirmed ...
+```
+
 Read `references/tool-contract.md` for core commands and `references/advanced-geometry.md`
 for advanced geometry details.
-
-## Building reasoning rules
-
-- Keep column centers on explicit grid/intersection coordinates when a structural grid exists.
-- Beam start/end coordinates represent the bottom centerline; their Z values must match.
-- Wall thickness is centered on the supplied wall centerline.
-- Door/window assemblies read opening metadata from the wall; do not guess rotation.
-- Use transparent materials for glazing, not structural/opaque elements.
-- Assign Tags to Groups/Components only, never raw edges/faces.
-- Re-inspect after structural, opening, facade, circulation, roof, and edit batches.
 
 ## Safety and current limits
 
 - Never use arbitrary Ruby execution or invent unsupported SketchUp capabilities.
 - Keep architecture in named Groups/Components rather than loose root geometry.
-- Editing intentionally targets root Groups/Components; semantic transform/duplicate is
-  restricted to OpenSU Groups.
-- Destructive delete is not exposed yet.
-- Walls and beams are straight in plan; curved walls are not yet exposed.
-- Multiple rectangular wall and slab openings are supported where documented.
-- Straight, L-shaped, and U-shaped two-flight stairs are supported; spiral/multi-landing stairs are not.
+- Tags belong on Groups/Components, never raw edges/faces.
+- Semantic transforms and batch transforms are restricted to OpenSU Groups.
+- Controlled deletion is restricted to exact-id + exact-name confirmed OpenSU root entities.
+- Straight, L-shaped, and U-shaped stairs are supported; spiral/multi-landing stairs are not.
 - Polygon floors/ceilings may be concave but may not self-intersect.
-- Pitched roofs are not yet exposed.
+- Pitched roofs and curved walls are not yet exposed.
 - If a request exceeds the current tool surface, explain the missing capability instead of pretending it was modeled.
