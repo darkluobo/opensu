@@ -3,10 +3,12 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "skills" / "sketchup-modeling" / "scripts" / "opensu_multisheet.py"
+sys.path.insert(0, str(SCRIPT.parent))
 SPEC = importlib.util.spec_from_file_location("opensu_multisheet_test_module", SCRIPT)
 assert SPEC and SPEC.loader
 opensu_multisheet = importlib.util.module_from_spec(SPEC)
