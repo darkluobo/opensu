@@ -3,7 +3,7 @@ name: CI
 on:
   push:
   pull_request:
-    branches: [main, phase1-architecture-mvp, phase2-building-elements, phase2-storefront-multi-openings, phase3-levels-stairs-roof, phase3-advanced-stairs-openings, phase4-edit-repair]
+    branches: [main, phase1-architecture-mvp, phase2-building-elements, phase2-storefront-multi-openings, phase3-levels-stairs-roof, phase3-advanced-stairs-openings, phase4-edit-repair, phase4-auto-repair]
   workflow_dispatch:
 
 concurrency:
@@ -22,15 +22,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e . pytest
-      - run: python -m py_compile src/sketchup_mcp/*.py skills/sketchup-modeling/scripts/opensu.py skills/sketchup-modeling/scripts/opensu_advanced.py skills/sketchup-modeling/scripts/opensu_edit.py skills/sketchup-modeling/scripts/opensu_repair.py
+      - run: python -m py_compile src/sketchup_mcp/*.py skills/sketchup-modeling/scripts/opensu.py skills/sketchup-modeling/scripts/opensu_advanced.py skills/sketchup-modeling/scripts/opensu_edit.py skills/sketchup-modeling/scripts/opensu_repair.py skills/sketchup-modeling/scripts/opensu_plan.py
       - run: python skills/sketchup-modeling/scripts/opensu.py --help
       - run: python skills/sketchup-modeling/scripts/opensu_advanced.py create-l-stair --help
       - run: python skills/sketchup-modeling/scripts/opensu_edit.py transform --help
-      - run: python skills/sketchup-modeling/scripts/opensu_repair.py find --help
       - run: python skills/sketchup-modeling/scripts/opensu_repair.py diagnose --help
-      - run: python skills/sketchup-modeling/scripts/opensu_repair.py batch-tag --help
-      - run: python skills/sketchup-modeling/scripts/opensu_repair.py batch-transform --help
-      - run: python skills/sketchup-modeling/scripts/opensu_repair.py delete-confirmed --help
+      - run: python skills/sketchup-modeling/scripts/opensu_plan.py --help
+      - run: python skills/sketchup-modeling/scripts/opensu_plan.py template > /tmp/plan-template.json
+      - run: python skills/sketchup-modeling/scripts/opensu_plan.py lint skills/sketchup-modeling/references/examples/showroom-plan-v1.json
       - run: python -m pytest tests/ -v
 
   ruby-syntax:
