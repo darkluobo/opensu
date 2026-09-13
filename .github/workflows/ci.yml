@@ -39,3 +39,4 @@ jobs:
           ruby -c su_mcp/su_mcp/main.rb
           ruby -c su_mcp/su_mcp/architecture.rb
           ruby -c su_mcp/su_mcp/architecture_completion.rb
+          ruby -c su_mcp/su_mcp/architecture_validation.rb
