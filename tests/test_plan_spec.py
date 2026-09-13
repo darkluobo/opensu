@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "skills" / "sketchup-modeling" / "scripts" / "opensu_plan.py"
+SCRIPTS = ROOT / "skills" / "sketchup-modeling" / "scripts"
+SCRIPT = SCRIPTS / "opensu_plan.py"
+sys.path.insert(0, str(SCRIPTS))
 SPEC = importlib.util.spec_from_file_location("opensu_plan_test_module", SCRIPT)
 assert SPEC and SPEC.loader
 opensu_plan = importlib.util.module_from_spec(SPEC)
