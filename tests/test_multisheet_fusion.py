@@ -7,7 +7,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "skills" / "sketchup-modeling" / "scripts" / "opensu_multisheet.py"
+SCRIPT = ROOT / "skills" / "opensu" / "scripts" / "opensu_multisheet.py"
 sys.path.insert(0, str(SCRIPT.parent))
 SPEC = importlib.util.spec_from_file_location("opensu_multisheet_test_module", SCRIPT)
 assert SPEC and SPEC.loader
@@ -23,7 +23,7 @@ def test_template_cross_checks_cleanly():
 
 
 def test_showroom_multisheet_example_cross_checks_cleanly():
-    path = ROOT / "skills" / "sketchup-modeling" / "references" / "examples" / "showroom-multisheet-pack-v1.json"
+    path = ROOT / "skills" / "opensu" / "references" / "examples" / "showroom-multisheet-pack-v1.json"
     value = json.loads(path.read_text(encoding="utf-8"))
     result = opensu_multisheet._lint(value)
     assert result["valid"] is True, result
