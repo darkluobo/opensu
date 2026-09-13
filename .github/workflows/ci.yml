@@ -88,7 +88,7 @@ jobs:
           from pathlib import Path
           from zipfile import ZipFile
 
-          rbz = Path('dist/opensu-sketchup-mcp-phase5-grid-layout.rbz')
+          rbz = Path('dist/opensu-v1.13.0.rbz')
           if not rbz.is_file():
               raise SystemExit('RBZ was not created')
           with ZipFile(rbz) as archive:
@@ -118,10 +118,10 @@ jobs:
           missing = sorted(required - names)
           if missing:
               raise SystemExit(f'Missing RBZ files: {missing}')
-          print(f'RBZ OK: {rbz} ({rbz.stat().st_size} bytes)')
+          print(f'OpenSU RBZ OK: {rbz} ({rbz.stat().st_size} bytes)')
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: opensu-sketchup-mcp-phase5-grid-layout
-          path: dist/opensu-sketchup-mcp-phase5-grid-layout.rbz
+          name: opensu-v1.13.0
+          path: dist/opensu-v1.13.0.rbz
           if-no-files-found: error

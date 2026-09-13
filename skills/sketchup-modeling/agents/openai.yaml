@@ -1,4 +1,4 @@
 interface:
-  display_name: "SketchUp Modeling"
-  short_description: "Model and validate SketchUp scenes through the local OpenSU extension"
-  default_prompt: "Use $sketchup-modeling to inspect the current SketchUp model, execute the requested architectural modeling in millimetres, and validate the result before finishing."
+  display_name: "OpenSU"
+  short_description: "AI modeling agent for SketchUp with drawing reconstruction and semantic building workflows"
+  default_prompt: "Use $sketchup-modeling with OpenSU to inspect the current SketchUp model, execute the requested architectural modeling in millimetres, and validate the result before finishing."

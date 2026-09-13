@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build an installable SketchUp RBZ archive from the repository source tree."""
+"""Build an installable OpenSU SketchUp RBZ archive from the repository source tree."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = ROOT / "dist" / "opensu-sketchup-mcp-phase5-grid-layout.rbz"
+DEFAULT_OUTPUT = ROOT / "dist" / "opensu-v1.13.0.rbz"
 
 
 def build_rbz(output: Path = DEFAULT_OUTPUT) -> Path:
@@ -38,7 +38,7 @@ def build_rbz(output: Path = DEFAULT_OUTPUT) -> Path:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build the OpenSU SketchUp MCP RBZ package.")
+    parser = argparse.ArgumentParser(description="Build the OpenSU SketchUp extension RBZ package.")
     parser.add_argument(
         "--output",
         type=Path,

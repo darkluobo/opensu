@@ -1,64 +1,49 @@
-# Codex setup
+# OpenSU + Codex setup
 
-This project is configured for Codex only. The project-scoped MCP configuration is in `.codex/config.toml`, and modeling behavior is defined in `AGENTS.md`.
+OpenSU supports two workflows. **Normal users should use the SketchUp RBZ extension plus the bundled `$sketchup-modeling` Skill.** The repository-scoped MCP configuration remains available for development and debugging.
 
-## One-time setup
+## Recommended end-user setup
 
-From the repository root on Windows:
+1. Build or download `opensu-v1.13.0.rbz`.
+2. Install it with SketchUp Extension Manager.
+3. Restart SketchUp.
+4. Start `Extensions > MCP Server > Start Server`.
+5. Install the Skill from `skills/sketchup-modeling/` into Codex.
+6. Restart Codex after installing or updating the Skill.
+
+The Skill talks directly to the local OpenSU extension at `127.0.0.1:9876`; no repository checkout or separate MCP configuration is required for normal use.
+
+Typical invocation:
+
+```text
+$sketchup-modeling
+检查当前 SketchUp，然后根据我的建筑要求建模，完成后 inspect、validate、diagnose。
+```
+
+## Development MCP setup
+
+For contributors working from this repository:
 
 ```powershell
 python -m pip install -e .
 ```
 
-Then open SketchUp, ensure the OpenSU/SketchUp MCP RBZ is installed, and start the local server:
+The optional project-scoped MCP configuration is in `.codex/config.toml`. It launches the Python MCP compatibility layer while keeping SketchUp itself as the source of truth.
 
-`Extensions > MCP Server > Start Server`
+## Connection checks
 
-The Ruby Console should show that the server is listening on `127.0.0.1:9876`.
-
-## Start Codex
-
-Open a terminal in this repository and run Codex from the repository root. When Codex asks whether to trust this project, trust it so project-scoped `.codex/config.toml` is loaded.
-
-Codex should discover the MCP server named `opensu` and expose only these Phase 1 tools:
-
-- `sketchup_status`
-- `sketchup_inspect_model`
-- `sketchup_create_floor`
-- `sketchup_create_wall`
-- `sketchup_create_opening`
-- `sketchup_validate_model`
-
-The MCP process is launched by Codex with:
+The SketchUp extension must be running locally. The Ruby Console should report that the server is listening on:
 
 ```text
-python -m sketchup_mcp.phase1_server
+127.0.0.1:9876
 ```
 
-with `PYTHONPATH=src` and the SketchUp bridge at `127.0.0.1:9876`.
+If Codex cannot connect:
 
-## First Codex test
-
-Ask Codex:
-
-```text
-Check the SketchUp connection, inspect the current model, and tell me whether it is ready for architectural modeling. Do not modify the model.
-```
-
-Then try:
-
-```text
-Build an 8 m × 6 m room. Use a 150 mm floor slab, 3 m high walls, and 200 mm wall thickness. Put a 900 × 2100 mm door on the south wall and an 1800 × 1500 mm window with a 900 mm sill on the east wall. Inspect and validate the model before you say it is finished.
-```
-
-## Troubleshooting
-
-If Codex cannot initialize the `opensu` MCP server:
-
-1. Run `python -m pip install -e .` again from the repo root.
-2. Confirm `python` is available in the same terminal environment where Codex runs.
-3. Confirm SketchUp is open and `MCP Server > Start Server` has been clicked.
+1. Confirm OpenSU is enabled in SketchUp Extension Manager.
+2. Restart SketchUp after replacing the RBZ.
+3. Start `MCP Server > Start Server`.
 4. Confirm port `9876` is not occupied by another process.
-5. Restart Codex after changing `.codex/config.toml`.
+5. Restart Codex after changing or reinstalling the Skill.
 
-Do not merge or publish new modeling capabilities until they pass both automated CI and a real SketchUp geometry test.
+Do not publish new modeling capabilities until they pass automated CI and a real SketchUp geometry/semantic acceptance test.

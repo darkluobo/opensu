@@ -1,14 +1,14 @@
 [project]
-name = "neonexai-sketchup-mcp"
-version = "1.1.0"
-description = "SketchUp integration through the Model Context Protocol — NeoNexAI hardened fork (no arbitrary code execution)"
+name = "opensu-sketchup"
+version = "1.13.0"
+description = "OpenSU — open-source AI modeling agent for SketchUp with bounded local automation, drawing reconstruction, and semantic building workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "NeoNexAI Agency", email = "info@neonexai.com"}
+    {name = "darkluobo / OpenSU contributors"}
 ]
-keywords = ["sketchup", "mcp", "model-context-protocol", "cad", "3d", "claude"]
+keywords = ["opensu", "sketchup", "codex", "ai-agent", "mcp", "architecture", "cad", "3d"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -19,14 +19,16 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/NeoNexAI/sketchup-mcp"
-Issues = "https://github.com/NeoNexAI/sketchup-mcp/issues"
+Homepage = "https://github.com/darkluobo/opensu"
+Issues = "https://github.com/darkluobo/opensu/issues"
 
 [project.scripts]
+opensu = "sketchup_mcp.phase1_server:main"
 sketchup-mcp = "sketchup_mcp.phase1_server:main"
 neonexai-sketchup-mcp = "sketchup_mcp.phase1_server:main"
 
 [project.entry-points.mcp]
+opensu = "sketchup_mcp.phase1_server:mcp"
 sketchup = "sketchup_mcp.phase1_server:mcp"
 
 [build-system]

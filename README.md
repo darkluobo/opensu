@@ -1,44 +1,94 @@
-# SketchUp MCP — OpenSU architecture MVP
+# OpenSU
 
-A hardened SketchUp MCP bridge extended with bounded architectural modeling tools.
+**OpenSU** is an open-source AI modeling agent for SketchUp. It connects Codex to a local SketchUp extension so natural-language instructions, architectural drawings, semantic building data, and validation workflows can become structured `.skp` geometry.
 
-This fork keeps the original security model: **no arbitrary Ruby execution** and the SketchUp socket listens only on `127.0.0.1`. Phase 1 adds a millimetre-based architecture layer for model inspection, floors, straight walls, rectangular openings, and model validation.
+> Current development checkpoint: **v1.13.0 / Phase 5.3**
 
-## Current Phase 1 status
+## What OpenSU can do
 
-Implemented on `phase1-architecture-mvp`:
+- Natural-language architectural modeling in millimetres
+- Floors, walls, columns, beams, doors, windows, curtain walls, ceilings, stairs, roofs, and openings
+- Multi-opening walls and semantic door/window assemblies
+- Safe model editing, Tags, transforms, duplication, diagnostics, batch repair, and controlled deletion
+- Drawing reconstruction through auditable Plan Specs
+- Multi-sheet plan/elevation/section evidence reconciliation
+- Persistent Levels, Grids, and functional Spaces inside the SketchUp model
+- Grid-driven structure such as `3/B` column placement and beam spans
+- Space-driven partition generation when the drawing explicitly supports those walls
+- Geometry and semantic validation before completion
 
-- `sketchup_inspect_model`
-- `sketchup_create_floor`
-- `sketchup_create_wall`
-- `sketchup_create_opening`
-- `sketchup_validate_model`
-- millimetres (`mm`) as the architecture protocol unit
-- OpenSU metadata on generated architectural groups
-- per-operation SketchUp undo support
-- Python wrapper tests
-- Ruby architecture code split from the original large `main.rb`
-- manifold-solid validation for generated architecture groups
-- reproducible `.rbz` packaging script
+## Architecture
 
-The original 13 curated SketchUp tools remain available as well.
+```text
+User
+  ↓
+Codex + $sketchup-modeling Skill
+  ↓
+OpenSU deterministic Skill bridges
+  ↓
+127.0.0.1:9876 JSON-RPC
+  ↓
+OpenSU SketchUp extension
+  ↓
+SketchUp Ruby API
+  ↓
+.skp model
+```
 
-> Phase 1 is still a development MVP. Before merging to `main`, the acceptance room must be verified inside a real SketchUp instance.
+The normal end-user path requires only the **OpenSU RBZ extension** and the bundled Codex Skill. Repository checkout and project-level MCP configuration are optional development workflows.
 
-See `docs/PHASE1_ACCEPTANCE.md` for the manual merge-gate checklist.
+## Safety model
 
-## Build an installable RBZ
+OpenSU keeps the hardened localhost-only design inherited from the NeoNexAI SketchUp MCP project:
+
+- listens on `127.0.0.1` only
+- no arbitrary Ruby execution
+- bounded modeling/editing tools
+- named Groups/Components rather than loose architectural geometry
+- SketchUp undo operations around mutations
+- explicit validation and uncertainty handling
+
+## Build the SketchUp extension
 
 ```bash
 python scripts/build_rbz.py
 ```
 
-This creates `dist/opensu-sketchup-mcp-phase1.rbz` for installation through SketchUp Extension Manager.
+The current build creates:
 
-## Unit contract
+```text
+dist/opensu-v1.13.0.rbz
+```
 
-All Phase 1 architecture tools use millimetres at the MCP boundary. The Ruby layer converts with SketchUp's `Numeric#mm` API.
+Install the RBZ through SketchUp Extension Manager, restart SketchUp, then start:
+
+```text
+Extensions > MCP Server > Start Server
+```
+
+## Codex Skill
+
+The Skill lives at:
+
+```text
+skills/sketchup-modeling/
+```
+
+The invocation name remains `$sketchup-modeling` for compatibility, while the product/display name is **OpenSU**.
+
+A typical request can be as simple as:
+
+```text
+$sketchup-modeling
+根据项目目录里的整套4S店图纸建立当前 SketchUp 模型。
+先索引图纸、轴网和功能区，校核平面/立面/剖面尺寸，
+确认后自动建模，最后 inspect、validate、diagnose。
+```
+
+## Project status
+
+Phase 5.3 includes drawing-set understanding, persistent architectural semantics, and grid/Space-driven modeling. The next planned work is broader batch structural generation and higher-level dealership layout automation.
 
 ## Provenance and license
 
-This project is forked from `NeoNexAI/sketchup-mcp` and retains its MIT license. See `THIRD_PARTY_NOTICES.md`.
+OpenSU is based on the MIT-licensed `NeoNexAI/sketchup-mcp` project and retains the MIT license. See `THIRD_PARTY_NOTICES.md` for attribution and third-party notices.
