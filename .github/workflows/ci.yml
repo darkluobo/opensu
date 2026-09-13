@@ -6,6 +6,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   python-test:
     runs-on: ubuntu-latest
@@ -40,3 +44,43 @@ jobs:
           ruby -c su_mcp/su_mcp/architecture.rb
           ruby -c su_mcp/su_mcp/architecture_completion.rb
           ruby -c su_mcp/su_mcp/architecture_validation.rb
+
+  package-rbz:
+    needs: [python-test, ruby-syntax]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build RBZ
+        run: python scripts/build_rbz.py
+      - name: Verify package contents
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          rbz = Path('dist/opensu-sketchup-mcp-phase1.rbz')
+          if not rbz.is_file():
+              raise SystemExit('RBZ was not created')
+          with ZipFile(rbz) as archive:
+              names = set(archive.namelist())
+          required = {
+              'su_mcp.rb',
+              'su_mcp/su_mcp/bootstrap.rb',
+              'su_mcp/su_mcp/main.rb',
+              'su_mcp/su_mcp/architecture.rb',
+              'su_mcp/su_mcp/architecture_completion.rb',
+              'su_mcp/su_mcp/architecture_validation.rb',
+          }
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit(f'Missing RBZ files: {missing}')
+          print(f'RBZ OK: {rbz} ({rbz.stat().st_size} bytes)')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opensu-sketchup-mcp-phase1
+          path: dist/opensu-sketchup-mcp-phase1.rbz
+          if-no-files-found: error
