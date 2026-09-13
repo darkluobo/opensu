@@ -3,7 +3,7 @@ name: CI
 on:
   push:
   pull_request:
-    branches: [main, phase1-architecture-mvp, phase2-building-elements, phase2-storefront-multi-openings, phase3-levels-stairs-roof, phase3-advanced-stairs-openings, phase4-edit-repair, phase4-auto-repair, phase5-drawing-to-model, phase5-multisheet-fusion, phase5-sheet-grid-spaces]
+    branches: [main, phase1-architecture-mvp, phase2-building-elements, phase2-storefront-multi-openings, phase3-levels-stairs-roof, phase3-advanced-stairs-openings, phase4-edit-repair, phase4-auto-repair, phase5-drawing-to-model, phase5-multisheet-fusion, phase5-sheet-grid-spaces, phase5-grid-driven-layout]
   workflow_dispatch:
 
 concurrency:
@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e . pytest
-      - run: python -m py_compile src/sketchup_mcp/*.py skills/sketchup-modeling/scripts/opensu.py skills/sketchup-modeling/scripts/opensu_advanced.py skills/sketchup-modeling/scripts/opensu_edit.py skills/sketchup-modeling/scripts/opensu_repair.py skills/sketchup-modeling/scripts/opensu_plan.py skills/sketchup-modeling/scripts/opensu_multisheet.py skills/sketchup-modeling/scripts/opensu_semantics.py
+      - run: python -m py_compile src/sketchup_mcp/*.py skills/sketchup-modeling/scripts/opensu.py skills/sketchup-modeling/scripts/opensu_advanced.py skills/sketchup-modeling/scripts/opensu_edit.py skills/sketchup-modeling/scripts/opensu_repair.py skills/sketchup-modeling/scripts/opensu_plan.py skills/sketchup-modeling/scripts/opensu_multisheet.py skills/sketchup-modeling/scripts/opensu_semantics.py skills/sketchup-modeling/scripts/opensu_layout.py
       - run: python skills/sketchup-modeling/scripts/opensu.py --help
       - run: python skills/sketchup-modeling/scripts/opensu_advanced.py create-l-stair --help
       - run: python skills/sketchup-modeling/scripts/opensu_edit.py transform --help
@@ -33,6 +33,9 @@ jobs:
       - run: python skills/sketchup-modeling/scripts/opensu_multisheet.py check skills/sketchup-modeling/references/examples/showroom-multisheet-pack-v1.json
       - run: python skills/sketchup-modeling/scripts/opensu_semantics.py --help
       - run: python skills/sketchup-modeling/scripts/opensu_semantics.py lint skills/sketchup-modeling/references/examples/showroom-semantics-v1.json
+      - run: python skills/sketchup-modeling/scripts/opensu_layout.py --help
+      - run: python skills/sketchup-modeling/scripts/opensu_layout.py grid-column --help
+      - run: python skills/sketchup-modeling/scripts/opensu_layout.py space-walls --help
       - run: python -m pytest tests/ -v
 
   ruby-syntax:
@@ -66,6 +69,8 @@ jobs:
           ruby -c su_mcp/su_mcp/auto_repair.rb
           ruby -c su_mcp/su_mcp/drawing_semantics.rb
           ruby -c su_mcp/su_mcp/drawing_semantics_validation.rb
+          ruby -c su_mcp/su_mcp/semantic_layout.rb
+          ruby -c su_mcp/su_mcp/semantic_layout_validation.rb
 
   package-rbz:
     needs: [python-test, ruby-syntax]
@@ -83,7 +88,7 @@ jobs:
           from pathlib import Path
           from zipfile import ZipFile
 
-          rbz = Path('dist/opensu-sketchup-mcp-phase5-semantics.rbz')
+          rbz = Path('dist/opensu-sketchup-mcp-phase5-grid-layout.rbz')
           if not rbz.is_file():
               raise SystemExit('RBZ was not created')
           with ZipFile(rbz) as archive:
@@ -107,6 +112,8 @@ jobs:
               'su_mcp/su_mcp/auto_repair.rb',
               'su_mcp/su_mcp/drawing_semantics.rb',
               'su_mcp/su_mcp/drawing_semantics_validation.rb',
+              'su_mcp/su_mcp/semantic_layout.rb',
+              'su_mcp/su_mcp/semantic_layout_validation.rb',
           }
           missing = sorted(required - names)
           if missing:
@@ -115,6 +122,6 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: opensu-sketchup-mcp-phase5-semantics
-          path: dist/opensu-sketchup-mcp-phase5-semantics.rbz
+          name: opensu-sketchup-mcp-phase5-grid-layout
+          path: dist/opensu-sketchup-mcp-phase5-grid-layout.rbz
           if-no-files-found: error
