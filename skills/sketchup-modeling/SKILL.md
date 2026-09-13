@@ -39,6 +39,7 @@ For a new building or room, prefer this sequence:
 - Use named Groups or Components for architectural elements.
 - Keep walls individually addressable unless a workflow explicitly requires aggregation.
 - Use clear stable names such as `Wall_South_001`, `Floor_Level01_001`.
+- Floors and walls must remain closed manifold solids after creation or opening edits.
 - Do not use arbitrary Ruby execution.
 - Prefer bounded architecture tools over primitive workarounds.
 - Do not silently convert architecture dimensions into legacy primitive units; architecture tools already accept mm.
@@ -71,8 +72,9 @@ After a meaningful modeling batch:
 1. call `sketchup_inspect_model`
 2. compare created geometry against requested dimensions and placement
 3. call `sketchup_validate_model`
-4. repair discrepancies
-5. inspect and validate again
+4. treat any non-manifold floor/wall as a geometry failure
+5. repair discrepancies
+6. inspect and validate again
 
 Do not tell the user the model is complete until the relevant checks pass.
 
@@ -80,10 +82,12 @@ Do not tell the user the model is complete until the relevant checks pass.
 
 For the acceptance room:
 
-1. Create an `8000 x 6000 mm` floor.
-2. Create four `3000 mm` high, `200 mm` thick walls.
-3. Add a `900 x 2100 mm` south-wall door opening with sill `0`.
-4. Add an `1800 x 1500 mm` east-wall window opening with sill `900 mm`.
-5. Inspect.
-6. Validate.
-7. Fix any reported errors before completion.
+1. Create an `8000 x 6000 x 150 mm` floor.
+2. Place the wall bases at `z=150 mm`.
+3. Create four `3000 mm` high, `200 mm` thick walls.
+4. Add a `900 x 2100 mm` south-wall door opening with sill `0`.
+5. Add an `1800 x 1500 mm` east-wall window opening with sill `900 mm`.
+6. Inspect.
+7. Validate.
+8. Confirm the floor and all walls are closed manifold solids.
+9. Fix any reported errors before completion.
