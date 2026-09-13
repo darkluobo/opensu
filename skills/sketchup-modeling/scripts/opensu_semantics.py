@@ -15,7 +15,7 @@ from opensu import OpenSUError, _inspect, _print, _send
 SCHEMA_VERSION = 1
 DRAWING_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dwg", ".dxf"}
 SHEET_ID_RE = re.compile(r"(?<![A-Z0-9])([A-Z]{1,4})[-_ ]?(\d{2,4})(?!\d)", re.IGNORECASE)
-REV_RE = re.compile(r"(?:\brev(?:ision)?\b|版次|版本)[-_ .]*([A-Z0-9]+)", re.IGNORECASE)
+REV_RE = re.compile(r"(?:(?<![A-Z0-9])rev(?:ision)?|版次|版本)[-_ .]*([A-Z0-9]+)", re.IGNORECASE)
 KIND_RULES = (
     ("schedule", ("schedule", "door schedule", "window schedule", "门窗表", "材料表", "设备表", "表格")),
     ("section", ("section", "剖面")),
