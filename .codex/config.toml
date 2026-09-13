@@ -1,0 +1,18 @@
+[mcp_servers.opensu]
+command = "python"
+args = ["-m", "sketchup_mcp.phase1_server"]
+cwd = "."
+enabled = true
+required = true
+startup_timeout_sec = 15
+tool_timeout_sec = 60
+default_tools_approval_mode = "auto"
+enabled_tools = [
+  "sketchup_status",
+  "sketchup_inspect_model",
+  "sketchup_create_floor",
+  "sketchup_create_wall",
+  "sketchup_create_opening",
+  "sketchup_validate_model",
+]
+env = { PYTHONPATH = "src", SKETCHUP_MCP_HOST = "127.0.0.1", SKETCHUP_MCP_PORT = "9876", SKETCHUP_MCP_TIMEOUT = "30" }
