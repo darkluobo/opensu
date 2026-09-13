@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  python-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -20,3 +20,22 @@ jobs:
       - run: pip install -e . pytest
       - run: python -m py_compile src/sketchup_mcp/*.py
       - run: python -m pytest tests/ -v
+
+  ruby-syntax:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby-version: ["2.7", "3.2"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+      - name: Check SketchUp extension Ruby syntax
+        run: |
+          ruby -c su_mcp.rb
+          ruby -c su_mcp/su_mcp.rb
+          ruby -c su_mcp/su_mcp/bootstrap.rb
+          ruby -c su_mcp/su_mcp/main.rb
+          ruby -c su_mcp/su_mcp/architecture.rb
+          ruby -c su_mcp/su_mcp/architecture_completion.rb
