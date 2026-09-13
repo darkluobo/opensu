@@ -18,6 +18,8 @@ Implemented on `phase1-architecture-mvp`:
 - per-operation SketchUp undo support
 - Python wrapper tests
 - Ruby architecture code split from the original large `main.rb`
+- manifold-solid validation for generated architecture groups
+- reproducible `.rbz` packaging script
 
 The original 13 curated SketchUp tools remain available as well.
 
@@ -67,7 +69,21 @@ Extensions → SketchUp MCP → Start Server
 
 The server listens on `127.0.0.1:9876`.
 
-You can also zip `su_mcp.rb` plus the `su_mcp/` directory, rename the archive to `.rbz`, and install it through SketchUp Extension Manager.
+### Build an installable RBZ
+
+Instead of copying files manually, build a SketchUp Extension Manager package:
+
+```bash
+python scripts/build_rbz.py
+```
+
+This creates:
+
+```text
+dist/opensu-sketchup-mcp-phase1.rbz
+```
+
+Install that file through SketchUp `Window → Extension Manager → Install Extension`.
 
 ### 2. Run the Python MCP server from this fork
 
@@ -141,6 +157,7 @@ Read-only structural validation for the current OpenSU architectural model. It c
 - missing geometry
 - invalid positive dimensions
 - malformed opening metadata
+- floor/wall groups that are not closed manifold solids
 
 ## Unit contract
 
@@ -178,6 +195,8 @@ sketchup_status
 
 Walls should normally start at `z = 150 mm` in this acceptance model so they sit on the top face of the 150 mm floor slab.
 
+See `docs/PHASE1_ACCEPTANCE.md` for the exact manual merge-gate checklist and suggested tool parameters.
+
 ## Original bounded tools
 
 The original tool surface remains available for general geometry, transforms, materials, booleans, edge treatment, woodworking joints, selection, and export. Arbitrary `eval_ruby` remains intentionally unavailable.
@@ -186,7 +205,7 @@ The original tool surface remains available for general geometry, transforms, ma
 
 - No arbitrary Ruby evaluation.
 - Keep the socket bound to localhost.
-- Architectural geometry must be grouped, named, and inspectable.
+- Architectural geometry must be grouped, named, inspectable, and solid where appropriate.
 - New mutating tools should use `model.start_operation` / `commit_operation` and abort on errors.
 - Prefer bounded semantic commands over passing raw Ruby code.
 - Run validation after meaningful modeling batches.
