@@ -2,22 +2,24 @@
 name: sketchup-modeling
 description: >-
   Control a local SketchUp model from Codex through the installed OpenSU/SketchUp MCP
-  extension. Use whenever the user asks Codex to create, modify, inspect, organize,
-  repair, materialize, or validate architectural SketchUp geometry from natural language,
-  including levels, rectangular or polygon floors/ceilings, slab and roof openings,
-  walls, columns, beams, straight/L/U stairs with landings, flat roofs, door/window
-  assemblies, glass curtain walls/storefronts, materials, Tags, transforms, duplication,
-  safe batch operations, controlled deletion, dimensions, and model QA.
+  extension. Use whenever the user asks Codex to create, reconstruct from drawings/PDFs,
+  modify, inspect, organize, repair, materialize, or validate architectural SketchUp
+  geometry from natural language. Supports auditable Plan Spec reconstruction, levels,
+  rectangular or polygon floors/ceilings, slab and roof openings, walls, columns, beams,
+  straight/L/U stairs, flat roofs, door/window assemblies, glass curtain walls/storefronts,
+  materials, Tags, transforms, duplication, safe batch operations, controlled deletion,
+  dimensions, and model QA.
 ---
 
 # SketchUp Modeling
 
 Use the bundled scripts as deterministic bridges to the installed SketchUp extension:
 
-- `scripts/opensu.py` for the stable core toolset.
-- `scripts/opensu_advanced.py` for L/U stairs, slab/roof openings, and polygon slabs/ceilings.
-- `scripts/opensu_edit.py` for single-entity non-destructive edits.
-- `scripts/opensu_repair.py` for search, diagnosis, batch repair, and controlled deletion.
+- `scripts/opensu.py` — stable core modeling.
+- `scripts/opensu_advanced.py` — L/U stairs, slab/roof openings, polygon slabs/ceilings.
+- `scripts/opensu_edit.py` — single-entity semantic edits.
+- `scripts/opensu_repair.py` — search, diagnosis, batch repair, controlled deletion.
+- `scripts/opensu_plan.py` — lint and execute drawing-derived Plan Spec JSON.
 
 Resolve scripts relative to this Skill directory. Do not copy them into the user's project
 and do not write ad-hoc socket/Ruby code when an exposed command already exists.
@@ -28,13 +30,85 @@ and do not write ad-hoc socket/Ruby code when an exposed command already exists.
 2. If it cannot connect, ask the user to open SketchUp and choose
    `Extensions > MCP Server > Start Server`, then retry.
 3. Run `python scripts/opensu.py inspect` before changing the model.
-4. Treat all architectural dimensions as millimetres.
+4. Treat architectural dimensions as millimetres.
 5. Preserve existing user geometry unless the request explicitly changes it.
 6. For multi-storey work, inspect existing levels first and define missing levels.
 
-## Modeling workflow
+## Drawing / PDF / image reconstruction
 
-Normally execute in this order:
+When the user asks to reconstruct a plan, PDF, screenshot, exported CAD image, or similar
+2D source, do **not** model directly from visual impression. First read
+`references/drawing-reconstruction.md`, then create an auditable Plan Spec v1 JSON.
+
+Use this workflow:
+
+1. inspect all supplied sheets/images relevant to the requested model
+2. identify units, floor, revision, scale evidence, axes, dimensions, and known elevations
+3. establish one stable X/Y/Z coordinate convention
+4. extract explicit printed dimensions before using any scale or visual estimate
+5. derive secondary coordinates from exact dimensions and wall thicknesses
+6. record assumptions and unresolved items in `uncertainties`
+7. attach `evidence.confidence` / `source_ref` to important geometry when useful
+8. write a Plan Spec v1 JSON using `references/plan-spec.schema.json`
+9. run `python scripts/opensu_plan.py lint <spec.json>`
+10. fix every lint error before touching SketchUp
+11. if blocking uncertainties remain, ask the user unless they explicitly authorized approximation
+12. inspect the current SketchUp model and check for conflicting names
+13. run `python scripts/opensu_plan.py execute <spec.json>`
+14. review the returned inspect/validation result
+15. repair only localized errors with edit/repair tools
+16. report which dimensions were exact, derived, estimated, or unresolved
+
+Evidence priority for drawing reconstruction:
+
+1. printed dimensions / written levels
+2. grid and chained dimensions
+3. repeated confirmed modules
+4. drawing scale when the source has not been unpredictably resized
+5. geometry derived from other exact dimensions
+6. pixel/visual estimation only with explicit permission for approximation
+
+Never silently resolve contradictory dimensions. Never treat a resized screenshot's printed
+scale as reliable without calibration to at least one known dimension.
+
+## Plan Spec commands
+
+```text
+python scripts/opensu_plan.py template
+python scripts/opensu_plan.py template --output plan.json
+python scripts/opensu_plan.py lint plan.json
+python scripts/opensu_plan.py execute plan.json
+```
+
+`execute` refuses a spec with lint errors. It also refuses blocking uncertainties unless
+`--allow-blocking-uncertainties` is explicitly passed. Use that flag only when the user has
+explicitly accepted approximate reconstruction for those unresolved items.
+
+By default, Plan execution also refuses root names that already exist in SketchUp. Do not
+use `--allow-existing-names` merely to suppress a collision; inspect and resolve the naming
+or scope conflict first.
+
+The Plan Spec may describe:
+
+- levels
+- rectangular or polygon floors
+- columns and beams
+- straight walls
+- multiple wall openings plus optional door/window assemblies
+- curtain walls/storefront grids
+- rectangular or polygon ceilings
+- straight/L/U stairs
+- flat roofs
+- rectangular slab/roof openings
+- materials
+- Tag assignments
+
+Use the example at `references/examples/showroom-plan-v1.json` as a structural reference,
+not as a source of dimensions for the user's project.
+
+## General modeling workflow
+
+For non-drawing tasks, normally execute in this order:
 
 1. define levels/storey elevations
 2. floor/slab, including polygon slabs where needed
@@ -64,7 +138,7 @@ When an existing model is wrong, do not immediately rebuild it. Use this sequenc
 1. `opensu_repair.py diagnose`
 2. inspect the returned issue, matched entity id/name, and repair hint
 3. use `opensu_repair.py find` when a broader type/name/tag query is needed
-4. apply a single edit or a batch edit
+4. apply a single edit or batch edit
 5. inspect
 6. validate
 7. repeat only for remaining errors
@@ -95,63 +169,39 @@ Use `opensu_repair.py` for:
 - `batch-transform`: apply one translation/Z rotation to multiple OpenSU Groups while
   synchronizing semantic coordinates for each object.
 
-Do not batch-transform mixed non-OpenSU content. Resolve the exact target ids first.
+Do not batch-transform mixed non-OpenSU content. Resolve exact target ids first.
 
 ## Controlled deletion
 
-Deletion is exposed only through `opensu_repair.py delete-confirmed` and is intentionally
-hard to trigger. Use it only when the user explicitly asks to delete/remove an object or
-when the user has explicitly authorized removal as part of a repair.
+Deletion is exposed only through `opensu_repair.py delete-confirmed`. Use it only when the
+user explicitly asks to delete/remove an object or has explicitly authorized removal as
+part of a repair.
 
 Before deleting:
 
-1. inspect or find the target
+1. inspect/find the target
 2. capture its `entity_id` and exact current name
-3. confirm the target is an OpenSU semantic root entity
-4. call delete with all three: entity id, exact confirm name, and the explicit confirmation flag
-5. inspect and validate immediately afterward
+3. confirm it is an OpenSU semantic root entity
+4. call delete with exact id, exact name, and confirmation flag
+5. inspect and validate immediately
 
 Never infer a delete target from a partial name. Never delete loose faces/edges or arbitrary
-non-OpenSU user geometry. If intent is ambiguous, hide the object or ask the user instead.
+non-OpenSU user geometry.
 
-## Levels and multi-storey reasoning
+## Building reasoning rules
 
-- Use `define-level` for named storey datums such as `Level_01=0`, `Level_02=4500`, and `Roof=9000`.
-- Level metadata is model-level data, not fake geometry. `inspect` returns the level list.
-- Treat a level elevation as the floor datum unless the user states another convention.
-- When `level_name` is supplied, it must match an existing level exactly.
-- Use floor top elevation as the normal wall/column base unless specified otherwise.
-
-## Floors, ceilings, and slab openings
-
-- Use rectangular `create-floor` / `create-ceiling` when a rectangle is sufficient.
-- Use `opensu_advanced.py create-polygon-slab` or `create-polygon-ceiling` for a simple
-  horizontal non-self-intersecting polygon, including concave footprints.
-- Polygon vertices must all use the same Z and be supplied in boundary order.
-- `create-slab-opening` targets rectangular OpenSU floor, ceiling, or flat-roof geometry.
-  It may be called repeatedly for multiple non-overlapping openings.
-- Keep every slab opening strictly inside the slab boundary.
-
-## Openings and storefront logic
-
-- A single OpenSU wall may contain multiple rectangular openings. Add them sequentially.
-- Openings may not overlap.
-- Create every required opening before its door/window assembly.
-- When a wall has multiple openings, always pass `--opening-name` to the assembly command.
-- For large glazed showroom/dealership fronts, prefer `create-curtain-wall`.
-
-## Stairs and roofs
-
-- `opensu.py create-stair`: one straight flight.
-- `opensu_advanced.py create-l-stair`: two flights with one 90-degree landing.
-- `opensu_advanced.py create-u-stair`: two return flights with one 180-degree landing.
+- Level metadata is model-level data; do not fake storeys with labels only.
+- Wall thickness is centered on the supplied wall centerline.
+- Preserve a deliberate wall start/end direction because opening offsets are measured from start.
+- Keep column centers on explicit grid intersections when a structural grid exists.
+- Beam start/end coordinates represent the bottom centerline and should share Z.
+- Door/window assemblies read opening metadata from the wall; do not guess rotation.
+- Prefer `create-curtain-wall` for continuous glazed showroom/dealership fronts.
 - Use a floor opening when a stair passes through an upper slab.
-- `create-flat-roof` creates a rectangular roof slab and optional four-sided parapets.
-- Use `create-slab-opening` against the flat-roof group for rectangular skylight/roof access openings.
+- Tags belong on Groups/Components, never raw edges/faces.
+- Re-inspect after structural, opening, facade, circulation, roof, and edit batches.
 
-## Commands
-
-Core:
+## Core commands
 
 ```text
 python scripts/opensu.py status
@@ -203,17 +253,24 @@ python scripts/opensu_repair.py batch-transform ...
 python scripts/opensu_repair.py delete-confirmed ...
 ```
 
-Read `references/tool-contract.md` for core commands and `references/advanced-geometry.md`
-for advanced geometry details.
+## References
+
+- `references/drawing-reconstruction.md` — drawing/PDF evidence and reconstruction rules.
+- `references/plan-spec.schema.json` — Plan Spec v1 structural contract.
+- `references/examples/showroom-plan-v1.json` — example only.
+- `references/tool-contract.md` — core command details.
+- `references/advanced-geometry.md` — advanced geometry details.
 
 ## Safety and current limits
 
 - Never use arbitrary Ruby execution or invent unsupported SketchUp capabilities.
 - Keep architecture in named Groups/Components rather than loose root geometry.
-- Tags belong on Groups/Components, never raw edges/faces.
-- Semantic transforms and batch transforms are restricted to OpenSU Groups.
-- Controlled deletion is restricted to exact-id + exact-name confirmed OpenSU root entities.
+- Plan Spec v1 is an interpretation/execution layer; it does not magically make an unreadable
+  drawing reliable. Preserve uncertainty instead of inventing dimensions.
+- Semantic transforms/batch transforms are restricted to OpenSU Groups.
+- Controlled deletion requires exact-id + exact-name confirmation.
 - Straight, L-shaped, and U-shaped stairs are supported; spiral/multi-landing stairs are not.
 - Polygon floors/ceilings may be concave but may not self-intersect.
 - Pitched roofs and curved walls are not yet exposed.
+- Plan Spec slab openings currently target rectangular floor/ceiling/flat-roof objects.
 - If a request exceeds the current tool surface, explain the missing capability instead of pretending it was modeled.
