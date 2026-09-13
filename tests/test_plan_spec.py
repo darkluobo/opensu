@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "skills" / "sketchup-modeling" / "scripts"
+SCRIPTS = ROOT / "skills" / "opensu" / "scripts"
 SCRIPT = SCRIPTS / "opensu_plan.py"
 sys.path.insert(0, str(SCRIPTS))
 SPEC = importlib.util.spec_from_file_location("opensu_plan_test_module", SCRIPT)
@@ -23,7 +23,7 @@ def test_template_lints_cleanly():
 
 
 def test_showroom_example_lints_cleanly():
-    path = ROOT / "skills" / "sketchup-modeling" / "references" / "examples" / "showroom-plan-v1.json"
+    path = ROOT / "skills" / "opensu" / "references" / "examples" / "showroom-plan-v1.json"
     value = json.loads(path.read_text(encoding="utf-8"))
     result = opensu_plan._lint(value)
     assert result["valid"] is True, result["errors"]
