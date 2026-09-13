@@ -3,7 +3,7 @@ name: CI
 on:
   push:
   pull_request:
-    branches: [main, phase1-architecture-mvp, phase2-building-elements, phase2-storefront-multi-openings]
+    branches: [main, phase1-architecture-mvp, phase2-building-elements, phase2-storefront-multi-openings, phase3-levels-stairs-roof]
   workflow_dispatch:
 
 concurrency:
@@ -22,11 +22,16 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e . pytest
-      - run: python -m py_compile src/sketchup_mcp/*.py skills/sketchup-modeling/scripts/opensu.py
+      - run: python -m py_compile src/sketchup_mcp/*.py skills/sketchup-modeling/scripts/opensu.py skills/sketchup-modeling/scripts/opensu_advanced.py
       - run: python skills/sketchup-modeling/scripts/opensu.py --help
       - run: python skills/sketchup-modeling/scripts/opensu.py define-level --help
       - run: python skills/sketchup-modeling/scripts/opensu.py create-stair --help
       - run: python skills/sketchup-modeling/scripts/opensu.py create-flat-roof --help
+      - run: python skills/sketchup-modeling/scripts/opensu_advanced.py create-l-stair --help
+      - run: python skills/sketchup-modeling/scripts/opensu_advanced.py create-u-stair --help
+      - run: python skills/sketchup-modeling/scripts/opensu_advanced.py create-slab-opening --help
+      - run: python skills/sketchup-modeling/scripts/opensu_advanced.py create-polygon-slab --help
+      - run: python skills/sketchup-modeling/scripts/opensu_advanced.py create-polygon-ceiling --help
       - run: python -m pytest tests/ -v
 
   ruby-syntax:
@@ -54,6 +59,8 @@ jobs:
           ruby -c su_mcp/su_mcp/storefront_validation.rb
           ruby -c su_mcp/su_mcp/levels_stairs_roof.rb
           ruby -c su_mcp/su_mcp/levels_stairs_roof_validation.rb
+          ruby -c su_mcp/su_mcp/advanced_stairs_openings.rb
+          ruby -c su_mcp/su_mcp/advanced_stairs_openings_validation.rb
 
   package-rbz:
     needs: [python-test, ruby-syntax]
@@ -71,7 +78,7 @@ jobs:
           from pathlib import Path
           from zipfile import ZipFile
 
-          rbz = Path('dist/opensu-sketchup-mcp-phase3.rbz')
+          rbz = Path('dist/opensu-sketchup-mcp-phase3-advanced.rbz')
           if not rbz.is_file():
               raise SystemExit('RBZ was not created')
           with ZipFile(rbz) as archive:
@@ -89,6 +96,8 @@ jobs:
               'su_mcp/su_mcp/storefront_validation.rb',
               'su_mcp/su_mcp/levels_stairs_roof.rb',
               'su_mcp/su_mcp/levels_stairs_roof_validation.rb',
+              'su_mcp/su_mcp/advanced_stairs_openings.rb',
+              'su_mcp/su_mcp/advanced_stairs_openings_validation.rb',
           }
           missing = sorted(required - names)
           if missing:
@@ -97,6 +106,6 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: opensu-sketchup-mcp-phase3
-          path: dist/opensu-sketchup-mcp-phase3.rbz
+          name: opensu-sketchup-mcp-phase3-advanced
+          path: dist/opensu-sketchup-mcp-phase3-advanced.rbz
           if-no-files-found: error
