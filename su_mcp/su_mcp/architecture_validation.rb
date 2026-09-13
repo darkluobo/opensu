@@ -19,8 +19,11 @@ module SU_MCP
         entity.is_a?(Sketchup::Group) && entity.get_attribute('OpenSU', 'type')
       end.first(max_entities)
 
+      solid_types = %w[floor wall column beam]
       non_manifold = []
       architecture.each do |entity|
+        type = entity.get_attribute('OpenSU', 'type').to_s
+        next unless solid_types.include?(type)
         next unless entity.respond_to?(:manifold?)
         next if entity.manifold?
 
