@@ -83,24 +83,36 @@ def _inspect(max_entities: int = 200) -> Any:
     return _send("inspect_model", {"max_entities": max_entities})
 
 
-def _find_wall_id(name: str) -> int:
+def _find_entity_id(name: str, opensu_type: str | None = None) -> int:
     model = _inspect(1000)
     if not isinstance(model, dict):
         raise OpenSUError("inspect_model returned an unexpected response.")
     matches = [
         entity
         for entity in model.get("entities", [])
-        if entity.get("opensu_type") == "wall" and entity.get("name") == name
+        if entity.get("name") == name
+        and (opensu_type is None or entity.get("opensu_type") == opensu_type)
     ]
     if not matches:
-        raise OpenSUError(f"No OpenSU wall named {name!r} was found.")
+        kind = f" {opensu_type}" if opensu_type else ""
+        raise OpenSUError(f"No OpenSU{kind} entity named {name!r} was found.")
     if len(matches) > 1:
-        raise OpenSUError(f"More than one OpenSU wall is named {name!r}; use --wall-id instead.")
+        raise OpenSUError(f"More than one matching entity is named {name!r}; use an explicit entity id instead.")
     return int(matches[0]["entity_id"])
+
+
+def _find_wall_id(name: str) -> int:
+    return _find_entity_id(name, "wall")
 
 
 def _print(value: Any) -> None:
     print(json.dumps(value, ensure_ascii=False, indent=2))
+
+
+def _wall_target(parser: argparse.ArgumentParser) -> None:
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--wall-id", type=int)
+    target.add_argument("--wall-name")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -129,16 +141,53 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--thickness", type=float, default=200.0)
     p.add_argument("--name")
 
+    p = sub.add_parser("create-column", help="Create a rectangular vertical column in millimetres.")
+    p.add_argument("--center", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
+    p.add_argument("--width", type=float, default=400.0)
+    p.add_argument("--depth", type=float, default=400.0)
+    p.add_argument("--height", type=float, default=3000.0)
+    p.add_argument("--name")
+
+    p = sub.add_parser("create-beam", help="Create a horizontal rectangular beam from its bottom centerline.")
+    p.add_argument("--start", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
+    p.add_argument("--end", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
+    p.add_argument("--width", type=float, default=300.0)
+    p.add_argument("--height", type=float, default=500.0)
+    p.add_argument("--name")
+
     p = sub.add_parser("create-opening", help="Create one rectangular opening in an OpenSU wall.")
-    target = p.add_mutually_exclusive_group(required=True)
-    target.add_argument("--wall-id", type=int)
-    target.add_argument("--wall-name")
+    _wall_target(p)
     p.add_argument("--offset", type=float, required=True)
     p.add_argument("--width", type=float, required=True)
     p.add_argument("--height", type=float, required=True)
     p.add_argument("--sill", type=float, default=0.0)
     p.add_argument("--type", dest="opening_type")
     p.add_argument("--name")
+
+    for command, help_text in (
+        ("create-door", "Create a framed door assembly inside an existing OpenSU door opening."),
+        ("create-window", "Create a framed glazed window assembly inside an existing OpenSU window opening."),
+    ):
+        p = sub.add_parser(command, help=help_text)
+        _wall_target(p)
+        p.add_argument("--opening-name")
+        p.add_argument("--frame-width", type=float, default=60.0)
+        p.add_argument("--frame-depth", type=float)
+        p.add_argument("--gap", type=float, default=5.0)
+        p.add_argument("--name")
+        if command == "create-door":
+            p.add_argument("--leaf-depth", type=float, default=40.0)
+        else:
+            p.add_argument("--glass-thickness", type=float, default=8.0)
+
+    p = sub.add_parser("apply-material", help="Apply a color/opacity material to an existing entity.")
+    target = p.add_mutually_exclusive_group(required=True)
+    target.add_argument("--entity-id", type=int)
+    target.add_argument("--name")
+    p.add_argument("--material-name", default="OpenSU_Material")
+    p.add_argument("--color", default="#B8B8B8", help="Hex color in #RRGGBB form.")
+    p.add_argument("--opacity", type=float, default=1.0)
+    p.add_argument("--no-recursive", action="store_true")
 
     return parser
 
@@ -174,6 +223,28 @@ def main() -> int:
                     "name": args.name,
                 },
             )
+        elif args.command == "create-column":
+            result = _send(
+                "create_column",
+                {
+                    "center_mm": args.center,
+                    "width_mm": args.width,
+                    "depth_mm": args.depth,
+                    "height_mm": args.height,
+                    "name": args.name,
+                },
+            )
+        elif args.command == "create-beam":
+            result = _send(
+                "create_beam",
+                {
+                    "start_mm": args.start,
+                    "end_mm": args.end,
+                    "width_mm": args.width,
+                    "height_mm": args.height,
+                    "name": args.name,
+                },
+            )
         elif args.command == "create-opening":
             wall_id = args.wall_id if args.wall_id is not None else _find_wall_id(args.wall_name)
             result = _send(
@@ -186,6 +257,35 @@ def main() -> int:
                     "sill_height_mm": args.sill,
                     "opening_type": args.opening_type,
                     "name": args.name,
+                },
+            )
+        elif args.command in {"create-door", "create-window"}:
+            wall_id = args.wall_id if args.wall_id is not None else _find_wall_id(args.wall_name)
+            payload: dict[str, Any] = {
+                "wall_id": wall_id,
+                "opening_name": args.opening_name,
+                "frame_width_mm": args.frame_width,
+                "gap_mm": args.gap,
+                "name": args.name,
+            }
+            if args.frame_depth is not None:
+                payload["frame_depth_mm"] = args.frame_depth
+            if args.command == "create-door":
+                payload["leaf_depth_mm"] = args.leaf_depth
+                result = _send("create_door", payload)
+            else:
+                payload["glass_thickness_mm"] = args.glass_thickness
+                result = _send("create_window", payload)
+        elif args.command == "apply-material":
+            entity_id = args.entity_id if args.entity_id is not None else _find_entity_id(args.name)
+            result = _send(
+                "apply_material",
+                {
+                    "entity_id": entity_id,
+                    "material_name": args.material_name,
+                    "color_hex": args.color,
+                    "opacity": args.opacity,
+                    "recursive": not args.no_recursive,
                 },
             )
         else:
