@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "project": {
+    "name": "Showroom_Test_Reconstruction",
+    "units": "mm",
+    "source": "A-101 showroom plan",
+    "source_revision": "example",
+    "coordinate_note": "X right, Y up, Level_01 datum at Z=0"
+  },
+  "assumptions": [
+    "Wall centerlines were derived from exact face dimensions and 200 mm wall thickness."
+  ],
+  "uncertainties": [],
+  "levels": [
+    {
+      "name": "Level_01",
+      "elevation_mm": 0,
+      "floor_to_floor_mm": 4500,
+      "evidence": {"confidence": "high", "source_ref": "section datum"}
+    }
+  ],
+  "floors": [
+    {
+      "name": "Floor_Level01_001",
+      "shape": "rect",
+      "origin_mm": [0, 0, 0],
+      "width_mm": 12000,
+      "depth_mm": 8000,
+      "thickness_mm": 150,
+      "level_name": "Level_01",
+      "evidence": {"confidence": "high", "source_ref": "overall dimensions 12000 x 8000"}
+    }
+  ],
+  "columns": [
+    {"name": "Column_A01_001", "center_mm": [600, 600, 150], "width_mm": 400, "depth_mm": 400, "height_mm": 4200, "level_name": "Level_01"},
+    {"name": "Column_A02_001", "center_mm": [11400, 600, 150], "width_mm": 400, "depth_mm": 400, "height_mm": 4200, "level_name": "Level_01"}
+  ],
+  "beams": [],
+  "walls": [
+    {"name": "Wall_South_001", "start_mm": [0, 0, 150], "end_mm": [12000, 0, 150], "height_mm": 4200, "thickness_mm": 200, "level_name": "Level_01"},
+    {"name": "Wall_East_001", "start_mm": [12000, 0, 150], "end_mm": [12000, 8000, 150], "height_mm": 4200, "thickness_mm": 200, "level_name": "Level_01"},
+    {"name": "Wall_North_001", "start_mm": [12000, 8000, 150], "end_mm": [0, 8000, 150], "height_mm": 4200, "thickness_mm": 200, "level_name": "Level_01"},
+    {"name": "Wall_West_001", "start_mm": [0, 8000, 150], "end_mm": [0, 0, 150], "height_mm": 4200, "thickness_mm": 200, "level_name": "Level_01"}
+  ],
+  "openings": [
+    {
+      "name": "Door_South_Opening_001",
+      "wall_name": "Wall_South_001",
+      "opening_type": "door",
+      "offset_mm": 1500,
+      "width_mm": 1200,
+      "height_mm": 2400,
+      "sill_height_mm": 0,
+      "create_assembly": true,
+      "assembly_name": "Door_South_001",
+      "evidence": {"confidence": "high", "source_ref": "door dimension and locating chain"}
+    },
+    {
+      "name": "Window_East_Opening_001",
+      "wall_name": "Wall_East_001",
+      "opening_type": "window",
+      "offset_mm": 1800,
+      "width_mm": 1800,
+      "height_mm": 1800,
+      "sill_height_mm": 700,
+      "create_assembly": true,
+      "assembly_name": "Window_East_001"
+    }
+  ],
+  "curtain_walls": [
+    {
+      "name": "CurtainWall_Showroom_001",
+      "start_mm": [3000, 300, 150],
+      "end_mm": [10500, 300, 150],
+      "height_mm": 3900,
+      "panel_width_mm": 1500,
+      "row_height_mm": 1950,
+      "level_name": "Level_01"
+    }
+  ],
+  "ceilings": [],
+  "stairs": [],
+  "roofs": [],
+  "slab_openings": [],
+  "materials": [],
+  "tags": [
+    {"tag_name": "A-WALL", "target_names": ["Wall_South_001", "Wall_East_001", "Wall_North_001", "Wall_West_001"]},
+    {"tag_name": "S-COLUMN", "target_names": ["Column_A01_001", "Column_A02_001"]},
+    {"tag_name": "A-GLAZ", "target_names": ["CurtainWall_Showroom_001"]}
+  ]
+}
