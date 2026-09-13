@@ -1,156 +1,202 @@
-# SketchUp MCP (hardened fork)
+# SketchUp MCP — OpenSU architecture MVP
 
-[![CI](https://github.com/NeoNexAI/sketchup-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/NeoNexAI/sketchup-mcp/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/neonexai-sketchup-mcp)](https://pypi.org/project/neonexai-sketchup-mcp/)
-[![Python](https://img.shields.io/pypi/pyversions/neonexai-sketchup-mcp)](https://pypi.org/project/neonexai-sketchup-mcp/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+A hardened SketchUp MCP bridge extended with bounded architectural modeling tools.
 
-Connect **SketchUp** to any MCP client (Claude Desktop, Claude Code, etc.) and
-drive it in natural language — create, transform and materialize geometry, run
-boolean operations, chamfer/fillet edges, build woodworking joints, and export
-the scene.
+This fork keeps the original security model: **no arbitrary Ruby execution** and the SketchUp socket listens only on `127.0.0.1`. Phase 1 adds a millimetre-based architecture layer for model inspection, floors, straight walls, rectangular openings, and model validation.
 
-## Provenance
+## Current Phase 1 status
 
-- Maintained by **[NeoNexAI Agency](https://github.com/NeoNexAI)** (AI
-  consulting studio). Contact: `info@neonexai.com`.
-- Hardened fork of [mhyrr/sketchup-mcp](https://github.com/mhyrr/sketchup-mcp),
-  itself inspired by [blender-mcp](https://github.com/ahujasid/blender-mcp).
-- **What "hardened" means:** the upstream project exposed an `eval_ruby` tool
-  (arbitrary Ruby execution inside SketchUp → full disk/network access). This
-  fork **removes it entirely** — Python server and Ruby extension — and the
-  extension socket listens **only on `127.0.0.1`**. The tool surface is 13
-  explicit, bounded tools. Audit the code yourself before installing, as you
-  would with any third-party software: the diff vs upstream is public.
+Implemented on `phase1-architecture-mvp`:
 
----
+- `sketchup_inspect_model`
+- `sketchup_create_floor`
+- `sketchup_create_wall`
+- `sketchup_create_opening`
+- `sketchup_validate_model`
+- millimetres (`mm`) as the architecture protocol unit
+- OpenSU metadata on generated architectural groups
+- per-operation SketchUp undo support
+- Python wrapper tests
+- Ruby architecture code split from the original large `main.rb`
 
-## Architecture (two pieces)
+The original 13 curated SketchUp tools remain available as well.
 
-SketchUp has no external API: it can only be driven from its **embedded Ruby
-API**. Hence two components working together:
+> Phase 1 is still a development MVP. Before merging to `main`, the acceptance room must be verified inside a real SketchUp instance.
 
-```
-MCP client (Claude Desktop / Claude Code)
-        │  (MCP, stdio)
+## Architecture
+
+```text
+MCP client (Codex / Claude / other MCP client)
+        │
+        │ MCP over stdio
         ▼
-  MCP server (Python, this package — uvx)
-        │  (TCP socket 127.0.0.1:9876)
+Python MCP server
+        │
+        │ local JSON-RPC/TCP · 127.0.0.1:9876
         ▼
-  SketchUp extension (Ruby, su_mcp/)  ──►  SketchUp
+SketchUp Ruby extension
+        │
+        ├─ original bounded modeling tools
+        └─ OpenSU architecture layer
+                │
+                ▼
+             SketchUp
 ```
 
 ## Requirements
 
-- **SketchUp** 2021 or later (Windows; the Ruby extension uses only the
-  standard SketchUp Ruby API).
-- **Python 3.10+** and **uv/uvx** (`pip install uv` or
-  `winget install astral-sh.uv`).
+- SketchUp 2021 or later
+- Python 3.10+
+- `uv`/`uvx` or a normal Python virtual environment
 
-## Installation
+## Development installation
 
-### Step 1 — SketchUp extension (Ruby)
+### 1. Install the SketchUp extension
 
-Copy `su_mcp.rb` **and** the `su_mcp/` folder from this repository into:
+Copy the repository's top-level `su_mcp.rb` **and** the `su_mcp/` folder into:
 
-```
+```text
 %AppData%\SketchUp\SketchUp 20XX\SketchUp\Plugins\
 ```
 
-(replace `20XX` with your version). Restart SketchUp, then start the server:
-menu **Extensions → SketchUp MCP → Start Server** (listens on `127.0.0.1:9876`).
+Restart SketchUp, then use:
 
-Alternative: zip `su_mcp.rb` + `su_mcp/`, rename to `.rbz`, and install via
-`Window → Extension Manager → Install Extension`.
-
-### Step 2 — MCP server (Python)
-
-Pin the version you audited (recommended — avoids silently pulling future
-releases):
-
-**Claude Desktop** — `%AppData%\Claude\claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "sketchup": {
-      "command": "uvx",
-      "args": ["neonexai-sketchup-mcp==1.1.0"]
-    }
-  }
-}
+```text
+Extensions → SketchUp MCP → Start Server
 ```
 
-**Claude Code** — same block in `%UserProfile%\.claude.json`, or via CLI:
+The server listens on `127.0.0.1:9876`.
+
+You can also zip `su_mcp.rb` plus the `su_mcp/` directory, rename the archive to `.rbz`, and install it through SketchUp Extension Manager.
+
+### 2. Run the Python MCP server from this fork
+
+For development, clone this repository and install it editable:
 
 ```bash
-claude mcp add sketchup --scope user -- uvx neonexai-sketchup-mcp==1.1.0
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e . pytest
+python -m sketchup_mcp
 ```
 
-**From GitHub instead of PyPI** (pin to a commit for reproducibility):
+The Phase 1 Python entrypoint registers both the original tool surface and the architecture tools.
 
-```json
-"args": ["--from", "git+https://github.com/NeoNexAI/sketchup-mcp@main", "neonexai-sketchup-mcp"]
+## Architecture tools
+
+### `sketchup_inspect_model`
+
+Read-only inspection of root-level groups/components, loose root geometry, tags, names, OpenSU type metadata, edit context, and bounds in millimetres.
+
+Use this before architectural edits and again after a modeling batch.
+
+### `sketchup_create_floor`
+
+Creates an isolated rectangular floor `Group`.
+
+Inputs are in millimetres:
+
+- width
+- depth
+- thickness
+- origin `[x, y, z]`
+- optional stable name
+
+### `sketchup_create_wall`
+
+Creates an isolated straight wall `Group` from a centerline.
+
+Inputs are in millimetres:
+
+- start `[x, y, z]`
+- end `[x, y, z]`
+- height
+- thickness
+- optional stable name
+
+Phase 1 requires start and end to use the same base elevation. Arbitrary horizontal wall angles are supported.
+
+### `sketchup_create_opening`
+
+Creates one rectangular opening in an OpenSU wall.
+
+Inputs are in millimetres:
+
+- target wall id
+- offset from wall start
+- width
+- height
+- sill height (`0` for a door)
+- optional semantic type/name
+
+Phase 1 currently supports **one opening per wall**. Multiple openings per wall are a later milestone.
+
+### `sketchup_validate_model`
+
+Read-only structural validation for the current OpenSU architectural model. It checks items such as:
+
+- loose root-level faces/edges
+- duplicate architecture names
+- required floor/wall metadata
+- missing geometry
+- invalid positive dimensions
+- malformed opening metadata
+
+## Unit contract
+
+The new architecture tools always use **millimetres at the MCP boundary**, regardless of the SketchUp model display unit.
+
+The Ruby layer converts millimetres with SketchUp's `Numeric#mm` API before creating geometry and converts inspected bounds back to millimetres before returning them.
+
+The original 13 legacy tools still retain their existing unit behavior. Do not mix their numeric geometry contract with the new architecture tool contract without explicit conversion.
+
+## Phase 1 acceptance model
+
+The first real-SketchUp acceptance test is:
+
+```text
+Floor: 8000 × 6000 × 150 mm
+Wall height: 3000 mm
+Wall thickness: 200 mm
+
+South wall: 900 × 2100 mm door
+East wall: 1800 × 1500 mm window
+Window sill: 900 mm
 ```
 
-Restart the client. First call to make: `sketchup_status`.
+Expected workflow:
 
----
+```text
+sketchup_status
+→ sketchup_inspect_model
+→ sketchup_create_floor
+→ sketchup_create_wall × 4
+→ sketchup_create_opening × 2
+→ sketchup_inspect_model
+→ sketchup_validate_model
+```
 
-## Tools (13)
+Walls should normally start at `z = 150 mm` in this acceptance model so they sit on the top face of the 150 mm floor slab.
 
-| Tool | What it does |
-|---|---|
-| `sketchup_status` | Verify the connection (call first) |
-| `sketchup_get_selection` | Ids + data of the current selection |
-| `sketchup_create_component` | Create primitive (cube/cylinder/sphere/cone) |
-| `sketchup_transform_component` | Move / rotate / scale by id |
-| `sketchup_delete_component` | Delete by id |
-| `sketchup_set_material` | Apply material/color |
-| `sketchup_export_scene` | Export (skp/dae/obj/stl/png/jpg) |
-| `sketchup_boolean_operation` | Union / difference / intersection of solids |
-| `sketchup_chamfer_edges` | Bevel edges |
-| `sketchup_fillet_edges` | Round edges |
-| `sketchup_create_mortise_tenon` | Mortise & tenon joint |
-| `sketchup_create_dovetail` | Dovetail joint |
-| `sketchup_create_finger_joint` | Finger (box) joint |
+## Original bounded tools
 
-### Example prompts
+The original tool surface remains available for general geometry, transforms, materials, booleans, edge treatment, woodworking joints, selection, and export. Arbitrary `eval_ruby` remains intentionally unavailable.
 
-- "Create a 200×80×40 box at the origin and apply 'Wood_Cherry'."
-- "Select that piece" → `sketchup_get_selection` → "move it 50 up in Z."
-- "Boolean difference: subtract the cylinder (tool) from the block (target)."
-- "Fillet all edges of that board with radius 1.5."
-- "Export the scene to DAE."
+## Development safety rules
 
-**Units**: SketchUp models default to **inches**. Tell your assistant which
-units you work in (cm/m) so it converts.
+- No arbitrary Ruby evaluation.
+- Keep the socket bound to localhost.
+- Architectural geometry must be grouped, named, and inspectable.
+- New mutating tools should use `model.start_operation` / `commit_operation` and abort on errors.
+- Prefer bounded semantic commands over passing raw Ruby code.
+- Run validation after meaningful modeling batches.
 
-## What it does NOT do
+## Testing
 
-- **No photorealistic rendering** — render plugins (V-Ray, Enscape, etc.)
-  expose no scripting surface here; keep launching them from their own UI.
-- **No arbitrary code execution** — by design. The 13 tools above are the
-  whole surface.
-- **No network access** — the extension accepts local connections only.
+The repository CI runs Python compilation and pytest. Phase 1 also adds Ruby syntax checks so loader/architecture files can fail early before manual SketchUp testing.
 
-## Configuration (env vars)
+Real SketchUp remains required for final geometry verification because CI does not embed SketchUp's Ruby runtime or modeling kernel.
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `SKETCHUP_MCP_HOST` | `127.0.0.1` | Extension host |
-| `SKETCHUP_MCP_PORT` | `9876` | Extension port |
-| `SKETCHUP_MCP_TIMEOUT` | `30` | Socket timeout (seconds) |
+## Provenance and license
 
-## Troubleshooting
-
-- **"No se pudo conectar con SketchUp"** → the extension server is not
-  running: `Extensions → SketchUp MCP → Start Server`.
-- **Command errors** → open SketchUp's Ruby Console (`Window → Ruby Console`)
-  for the detailed message.
-- **Boolean operation fails** → both entities must be closed (manifold)
-  solids, not open surfaces.
-
-## License
-
-MIT.
+This project is forked from `NeoNexAI/sketchup-mcp` and retains its MIT license. See `THIRD_PARTY_NOTICES.md` for attribution and the policy for incorporating additional upstream code.
