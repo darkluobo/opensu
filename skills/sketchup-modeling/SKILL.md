@@ -12,7 +12,8 @@ description: >-
 
 Use the bundled `scripts/opensu.py` as the deterministic bridge to the installed
 SketchUp extension. Resolve the script relative to this Skill directory; do not copy
-it into the user's project.
+it into the user's project. The Skill is intentionally self-contained: the user only
+needs the SketchUp extension installed and this Skill installed in Codex.
 
 ## Start every SketchUp task
 
