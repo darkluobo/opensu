@@ -155,7 +155,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--height", type=float, default=500.0)
     p.add_argument("--name")
 
-    p = sub.add_parser("create-opening", help="Create one rectangular opening in an OpenSU wall.")
+    p = sub.add_parser("create-opening", help="Add a rectangular opening to an OpenSU wall; may be called repeatedly on the same wall.")
     _wall_target(p)
     p.add_argument("--offset", type=float, required=True)
     p.add_argument("--width", type=float, required=True)
@@ -179,6 +179,21 @@ def build_parser() -> argparse.ArgumentParser:
             p.add_argument("--leaf-depth", type=float, default=40.0)
         else:
             p.add_argument("--glass-thickness", type=float, default=8.0)
+
+    p = sub.add_parser("create-curtain-wall", help="Create a framed glass curtain-wall/storefront assembly along a straight baseline.")
+    p.add_argument("--start", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
+    p.add_argument("--end", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
+    p.add_argument("--height", type=float, default=3600.0)
+    p.add_argument("--panel-width", type=float, default=1500.0)
+    p.add_argument("--row-height", type=float)
+    p.add_argument("--mullion-width", type=float, default=60.0)
+    p.add_argument("--mullion-depth", type=float, default=100.0)
+    p.add_argument("--glass-thickness", type=float, default=10.0)
+    p.add_argument("--gap", type=float, default=8.0)
+    p.add_argument("--frame-color", default="#3F4448")
+    p.add_argument("--glass-color", default="#9CC9E8")
+    p.add_argument("--glass-opacity", type=float, default=0.35)
+    p.add_argument("--name")
 
     p = sub.add_parser("apply-material", help="Apply a color/opacity material to an existing entity.")
     target = p.add_mutually_exclusive_group(required=True)
@@ -276,6 +291,23 @@ def main() -> int:
             else:
                 payload["glass_thickness_mm"] = args.glass_thickness
                 result = _send("create_window", payload)
+        elif args.command == "create-curtain-wall":
+            payload = {
+                "start_mm": args.start,
+                "end_mm": args.end,
+                "height_mm": args.height,
+                "panel_width_mm": args.panel_width,
+                "row_height_mm": args.row_height if args.row_height is not None else args.height,
+                "mullion_width_mm": args.mullion_width,
+                "mullion_depth_mm": args.mullion_depth,
+                "glass_thickness_mm": args.glass_thickness,
+                "gap_mm": args.gap,
+                "frame_color_hex": args.frame_color,
+                "glass_color_hex": args.glass_color,
+                "glass_opacity": args.glass_opacity,
+                "name": args.name,
+            }
+            result = _send("create_curtain_wall", payload)
         elif args.command == "apply-material":
             entity_id = args.entity_id if args.entity_id is not None else _find_entity_id(args.name)
             result = _send(
