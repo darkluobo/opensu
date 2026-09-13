@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "skills" / "sketchup-modeling" / "scripts"
+SCRIPTS = ROOT / "skills" / "opensu" / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 SCRIPT = SCRIPTS / "opensu_semantics.py"
@@ -24,7 +24,7 @@ def test_semantic_template_lints_cleanly():
 
 
 def test_showroom_semantic_example_lints_cleanly():
-    path = ROOT / "skills" / "sketchup-modeling" / "references" / "examples" / "showroom-semantics-v1.json"
+    path = ROOT / "skills" / "opensu" / "references" / "examples" / "showroom-semantics-v1.json"
     result = opensu_semantics._lint(json.loads(path.read_text(encoding="utf-8")))
     assert result["valid"] is True, result
     assert result["counts"]["grids"] == 9

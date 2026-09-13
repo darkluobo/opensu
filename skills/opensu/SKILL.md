@@ -1,16 +1,16 @@
 ---
-name: sketchup-modeling
+name: opensu
 description: >-
-  Control a local SketchUp model from Codex through the installed OpenSU/SketchUp MCP
-  extension. Use for natural-language architectural modeling, reconstruction from one or
-  many drawings/PDFs/images, persistent levels/grids/spaces, grid-driven structure,
+  Control a local SketchUp model from Codex through the installed OpenSU extension.
+  Use for natural-language architectural modeling, reconstruction from one or many
+  drawings/PDFs/images, persistent levels/grids/spaces, grid-driven structure,
   space-driven partitions, inspection, organization, repair, and validation. Supports
   auditable Plan Specs, cross-sheet evidence fusion, floors, walls, columns, beams,
   openings, doors/windows, curtain walls, ceilings, stairs, roofs, Tags, materials,
   semantic edits, batch repair, and controlled deletion.
 ---
 
-# SketchUp Modeling
+# OpenSU
 
 Use the bundled deterministic bridges instead of ad-hoc socket code or arbitrary Ruby:
 

@@ -8,7 +8,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "skills" / "sketchup-modeling" / "scripts"
+SCRIPTS = ROOT / "skills" / "opensu" / "scripts"
 SCRIPT = SCRIPTS / "opensu_layout.py"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))

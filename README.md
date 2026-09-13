@@ -22,7 +22,7 @@
 ```text
 User
   ↓
-Codex + $sketchup-modeling Skill
+Codex + $opensu Skill
   ↓
 OpenSU deterministic Skill bridges
   ↓
@@ -71,15 +71,19 @@ Extensions > MCP Server > Start Server
 The Skill lives at:
 
 ```text
-skills/sketchup-modeling/
+skills/opensu/
 ```
 
-The invocation name remains `$sketchup-modeling` for compatibility, while the product/display name is **OpenSU**.
+Invoke it with:
+
+```text
+$opensu
+```
 
 A typical request can be as simple as:
 
 ```text
-$sketchup-modeling
+$opensu
 根据项目目录里的整套4S店图纸建立当前 SketchUp 模型。
 先索引图纸、轴网和功能区，校核平面/立面/剖面尺寸，
 确认后自动建模，最后 inspect、validate、diagnose。
