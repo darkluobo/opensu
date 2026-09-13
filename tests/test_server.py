@@ -1,12 +1,12 @@
 """MCP server tests that do not require a live SketchUp instance.
 
 They cover the hardened security property and the expected public tool surface
-for the architecture-enabled server entrypoint.
+for the complete Phase 1 architecture-enabled server entrypoint.
 """
 
 from pathlib import Path
 
-from sketchup_mcp import architecture_server as server
+from sketchup_mcp import phase1_server as server
 
 SRC_DIR = Path(__file__).resolve().parent.parent / "src" / "sketchup_mcp"
 RUBY_DIR = Path(__file__).resolve().parent.parent / "su_mcp" / "su_mcp"
@@ -28,6 +28,8 @@ EXPECTED_TOOLS = {
     "sketchup_inspect_model",
     "sketchup_create_floor",
     "sketchup_create_wall",
+    "sketchup_create_opening",
+    "sketchup_validate_model",
 }
 
 _CODE_EXEC_TOKEN = "ev" + "al" + "_ruby"
