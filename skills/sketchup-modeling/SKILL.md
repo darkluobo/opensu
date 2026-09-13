@@ -1,93 +1,69 @@
 ---
 name: sketchup-modeling
 description: >-
-  Professional SketchUp modeling workflow for architecture-oriented tasks.
-  Use this when the user asks to create, modify, inspect, or validate building
-  geometry through the SketchUp MCP architecture tools.
+  Control a local SketchUp model from Codex through the installed OpenSU/SketchUp MCP
+  extension. Use whenever the user asks Codex to create, modify, inspect, or validate
+  SketchUp architecture from natural language, including rooms, floors, walls, doors,
+  windows, dimensions, and model QA. This skill talks directly to the local SketchUp
+  extension and does not require a project checkout or separate MCP configuration.
 ---
 
-# SketchUp Modeling Skill
+# SketchUp Modeling
 
-## Core principle
+Use the bundled `scripts/opensu.py` as the deterministic bridge to the installed
+SketchUp extension. Resolve the script relative to this Skill directory; do not copy
+it into the user's project.
 
-Model deliberately, inspect frequently, and verify before declaring completion.
-Do not assume a geometry operation succeeded just because a tool call returned.
+## Start every SketchUp task
 
-## Session start
+1. Run `python scripts/opensu.py status` from this Skill directory.
+2. If it cannot connect, ask the user to open SketchUp and choose
+   `Extensions > MCP Server > Start Server`, then retry.
+3. Run `python scripts/opensu.py inspect` before changing the model.
+4. Treat all architecture dimensions as millimetres.
+5. Preserve existing user geometry unless the request explicitly changes it.
 
-1. Call `sketchup_status`.
-2. Call `sketchup_inspect_model` before creating or modifying architecture.
-3. Treat all architecture-tool dimensions as millimetres.
-4. Preserve existing user geometry unless the task explicitly requires changes.
+## Modeling workflow
 
-## Architectural modeling order
+Translate the user's natural-language request into explicit geometry, then execute in
+this order when applicable:
 
-For a new building or room, prefer this sequence:
-
-1. floor / slab
-2. primary exterior walls
+1. floor/slab
+2. exterior walls
 3. interior walls
 4. openings
-5. columns and beams when required
-6. components and materials
-7. scenes / cameras
-8. final model inspection and validation
+5. inspect
+6. validate
 
-## Geometry rules
+Use clear stable names such as `Floor_Level01_001`, `Wall_South_001`,
+`Door_South_001`, and `Window_East_001`.
 
-- Never intentionally create loose architectural geometry at model root.
-- Use named Groups or Components for architectural elements.
-- Keep walls individually addressable unless a workflow explicitly requires aggregation.
-- Use clear stable names such as `Wall_South_001`, `Floor_Level01_001`.
-- Floors and walls must remain closed manifold solids after creation or opening edits.
-- Do not use arbitrary Ruby execution.
-- Prefer bounded architecture tools over primitive workarounds.
-- Do not silently convert architecture dimensions into legacy primitive units; architecture tools already accept mm.
+After every meaningful batch, run `inspect` and then `validate`. Do not report the job
+as complete when validation reports errors or the returned geometry disagrees with the
+requested dimensions.
 
-## Phase 1 architecture tools
+## Commands
 
-The following tools are available:
+Use the bundled script rather than writing ad-hoc socket code:
 
-- `sketchup_inspect_model`
-- `sketchup_create_floor`
-- `sketchup_create_wall`
-- `sketchup_create_opening`
-- `sketchup_validate_model`
+```text
+python scripts/opensu.py status
+python scripts/opensu.py inspect
+python scripts/opensu.py create-floor ...
+python scripts/opensu.py create-wall ...
+python scripts/opensu.py create-opening ...
+python scripts/opensu.py validate
+```
 
-### Current constraints
+Read `references/tool-contract.md` when exact command arguments or current Phase 1
+constraints are needed.
 
-- Walls are straight and horizontal in plan; start/end share the same base Z.
-- Wall thickness is centered on the supplied centerline.
-- Phase 1 supports one opening per wall.
-- Openings must target walls created by `sketchup_create_wall`.
-- Openings must remain away from wall endpoints.
-- Use `sill_height_mm=0` for door-like openings.
+## Safety and limits
 
-If a task exceeds these constraints, explain the limitation rather than fabricating success or falling back to arbitrary Ruby.
-
-## Verification loop
-
-After a meaningful modeling batch:
-
-1. call `sketchup_inspect_model`
-2. compare created geometry against requested dimensions and placement
-3. call `sketchup_validate_model`
-4. treat any non-manifold floor/wall as a geometry failure
-5. repair discrepancies
-6. inspect and validate again
-
-Do not tell the user the model is complete until the relevant checks pass.
-
-## Phase 1 room recipe
-
-For the acceptance room:
-
-1. Create an `8000 x 6000 x 150 mm` floor.
-2. Place the wall bases at `z=150 mm`.
-3. Create four `3000 mm` high, `200 mm` thick walls.
-4. Add a `900 x 2100 mm` south-wall door opening with sill `0`.
-5. Add an `1800 x 1500 mm` east-wall window opening with sill `900 mm`.
-6. Inspect.
-7. Validate.
-8. Confirm the floor and all walls are closed manifold solids.
-9. Fix any reported errors before completion.
+- Never use arbitrary Ruby execution or invent unsupported SketchUp capabilities.
+- Keep architectural geometry in named Groups/Components rather than loose root geometry.
+- Walls are straight in Phase 1 and their start/end Z values must match.
+- Phase 1 supports one rectangular opening per OpenSU wall.
+- Openings can only target walls created by this OpenSU architecture workflow.
+- If the request exceeds the current tool surface, explain the missing capability instead
+  of pretending it was modeled.
