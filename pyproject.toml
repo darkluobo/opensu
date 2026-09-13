@@ -23,15 +23,15 @@ Homepage = "https://github.com/NeoNexAI/sketchup-mcp"
 Issues = "https://github.com/NeoNexAI/sketchup-mcp/issues"
 
 [project.scripts]
-sketchup-mcp = "sketchup_mcp.server:main"
-neonexai-sketchup-mcp = "sketchup_mcp.server:main"
+sketchup-mcp = "sketchup_mcp.architecture_server:main"
+neonexai-sketchup-mcp = "sketchup_mcp.architecture_server:main"
 
 [project.entry-points.mcp]
-sketchup = "sketchup_mcp.server:mcp"
+sketchup = "sketchup_mcp.architecture_server:mcp"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {"" = "src"} 
+package-dir = {"" = "src"}
