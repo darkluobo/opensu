@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "grids": [
+    {"name": "1", "axis": "x", "coordinate_mm": 0, "source_ref": "A-101 grid 1"},
+    {"name": "2", "axis": "x", "coordinate_mm": 6000, "source_ref": "A-101 grid 2"},
+    {"name": "3", "axis": "x", "coordinate_mm": 12000, "source_ref": "A-101 grid 3"},
+    {"name": "4", "axis": "x", "coordinate_mm": 18000, "source_ref": "A-101 grid 4"},
+    {"name": "5", "axis": "x", "coordinate_mm": 24000, "source_ref": "A-101 grid 5"},
+    {"name": "A", "axis": "y", "coordinate_mm": 0, "source_ref": "A-101 grid A"},
+    {"name": "B", "axis": "y", "coordinate_mm": 6000, "source_ref": "A-101 grid B"},
+    {"name": "C", "axis": "y", "coordinate_mm": 12000, "source_ref": "A-101 grid C"},
+    {"name": "D", "axis": "y", "coordinate_mm": 18000, "source_ref": "A-101 grid D"}
+  ],
+  "spaces": [
+    {
+      "name": "Showroom_01",
+      "level_name": "Level_01",
+      "boundary_mm": [[0, 0], [18000, 0], [18000, 9000], [0, 9000]],
+      "program_type": "showroom",
+      "department": "sales",
+      "zone": "front_of_house",
+      "source_ref": "A-101 showroom"
+    },
+    {
+      "name": "Reception_01",
+      "level_name": "Level_01",
+      "boundary_mm": [[18000, 0], [24000, 0], [24000, 6000], [18000, 6000]],
+      "program_type": "reception",
+      "department": "sales",
+      "zone": "front_of_house",
+      "source_ref": "A-101 reception"
+    },
+    {
+      "name": "Customer_Lounge_01",
+      "level_name": "Level_01",
+      "boundary_mm": [[18000, 6000], [24000, 6000], [24000, 12000], [18000, 12000]],
+      "program_type": "customer_lounge",
+      "department": "aftersales",
+      "zone": "customer",
+      "source_ref": "A-101 customer lounge"
+    },
+    {
+      "name": "Workshop_01",
+      "level_name": "Level_01",
+      "boundary_mm": [[0, 9000], [18000, 9000], [18000, 18000], [0, 18000]],
+      "program_type": "workshop",
+      "department": "aftersales",
+      "zone": "back_of_house",
+      "source_ref": "A-101 workshop"
+    }
+  ]
+}
