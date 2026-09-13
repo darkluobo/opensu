@@ -4,17 +4,18 @@ description: >-
   Control a local SketchUp model from Codex through the installed OpenSU/SketchUp MCP
   extension. Use whenever the user asks Codex to create, modify, inspect, materialize,
   or validate architectural SketchUp geometry from natural language, including floors,
-  walls, columns, beams, door/window openings, actual door/window assemblies, materials,
-  dimensions, and model QA. This skill talks directly to the local SketchUp extension
-  and does not require a project checkout or separate MCP configuration.
+  walls, columns, beams, multiple door/window openings per wall, actual door/window
+  assemblies, glass curtain walls/storefronts, materials, dimensions, and model QA.
+  This skill talks directly to the local SketchUp extension and does not require a
+  project checkout or separate MCP configuration.
 ---
 
 # SketchUp Modeling
 
 Use the bundled `scripts/opensu.py` as the deterministic bridge to the installed
 SketchUp extension. Resolve the script relative to this Skill directory; do not copy
-it into the user's project. The Skill is intentionally self-contained: the user only
-needs the SketchUp extension installed and this Skill installed in Codex.
+it into the user's project. The user only needs the SketchUp extension installed and
+this Skill installed in Codex.
 
 ## Start every SketchUp task
 
@@ -27,30 +28,39 @@ needs the SketchUp extension installed and this Skill installed in Codex.
 
 ## Modeling workflow
 
-Translate the user's natural-language request into explicit geometry, then execute in
-this order when applicable:
+Translate the user's request into explicit geometry and normally execute in this order:
 
 1. floor/slab
 2. primary columns
 3. primary beams
-4. exterior walls
-5. interior walls
-6. door/window openings
-7. actual door/window assemblies
+4. opaque exterior/interior walls
+5. all door/window openings for each wall
+6. actual door/window assemblies
+7. curtain-wall/storefront assemblies
 8. materials
 9. inspect
 10. validate
 
-Use clear stable names such as `Floor_Level01_001`, `Column_A01_001`,
-`Beam_A01_B01_001`, `Wall_South_001`, `Door_South_001`, and `Window_East_001`.
+Use stable semantic names such as `Floor_Level01_001`, `Column_A01_001`,
+`Beam_A01_B01_001`, `Wall_South_001`, `Door_South_001`, `Window_East_001`, and
+`CurtainWall_Showroom_001`.
 
-For a door or window, first create the opening, then create the corresponding assembly
-in that opening. Prefer targeting walls and entities by stable name rather than copying
-raw entity ids into long plans.
+## Openings and storefront logic
+
+- A single OpenSU wall may contain multiple rectangular openings. Add them sequentially
+  with `create-opening`; the extension regenerates the complete closed wall shell.
+- Openings may not overlap. Keep reasonable solid wall strips between separate openings
+  unless the design explicitly calls for touching edges.
+- Create every required opening before creating its door/window assembly.
+- When a wall has multiple openings, always pass `--opening-name` to `create-door` or
+  `create-window` so the intended opening is unambiguous.
+- For large glazed showroom facades, dealership fronts, or storefront grids, prefer
+  `create-curtain-wall` instead of approximating the facade with many ordinary windows.
+- Curtain walls are independent framed/glazed assemblies. Use the requested baseline,
+  height, target panel width, row height, frame dimensions, glass color, and opacity.
 
 After every meaningful batch, run `inspect` and then `validate`. Do not report the job
-as complete when validation reports errors or the returned geometry disagrees with the
-requested dimensions.
+as complete when validation reports errors or dimensions disagree with the request.
 
 ## Commands
 
@@ -66,31 +76,33 @@ python scripts/opensu.py create-wall ...
 python scripts/opensu.py create-opening ...
 python scripts/opensu.py create-door ...
 python scripts/opensu.py create-window ...
+python scripts/opensu.py create-curtain-wall ...
 python scripts/opensu.py apply-material ...
 python scripts/opensu.py validate
 ```
 
-Read `references/tool-contract.md` when exact command arguments or current geometry
-constraints are needed.
+Read `references/tool-contract.md` when exact arguments or current geometry constraints
+are needed.
 
 ## Building reasoning rules
 
-- Use floor top elevation as the normal wall/column base unless the user specifies otherwise.
+- Use floor top elevation as the normal wall/column base unless specified otherwise.
 - Keep column centers on explicit grid/intersection coordinates when a structural grid exists.
-- Beam start/end coordinates represent the bottom centerline; keep their Z equal in the current implementation.
+- Beam start/end coordinates represent the bottom centerline; their Z values must match.
 - Wall thickness is centered on the supplied wall centerline.
-- Create openings before door/window assemblies.
-- Door/window assemblies read the opening metadata from the wall, so do not manually guess rotation.
-- Use materials after geometry is stable; transparent materials are appropriate for glass only.
-- Re-inspect after structural and opening batches before moving on.
+- Door/window assemblies read their opening metadata from the wall; do not guess rotation.
+- Use transparent materials for glazing, not for structural/opaque elements.
+- Re-inspect after structural, opening, and facade batches before moving on.
 
 ## Safety and current limits
 
 - Never use arbitrary Ruby execution or invent unsupported SketchUp capabilities.
-- Keep architectural geometry in named Groups/Components rather than loose root geometry.
+- Keep architecture in named Groups/Components rather than loose root geometry.
 - Walls and beams are straight and horizontal in plan in the current implementation.
-- The current opening system supports one rectangular opening per OpenSU wall.
-- Door/window assemblies can only target openings created by this OpenSU architecture workflow.
+- Multiple non-overlapping rectangular openings are supported on one OpenSU wall.
+- Door/window assemblies can only target OpenSU opening metadata.
 - Columns are rectangular vertical prisms; beams are rectangular straight prisms.
-- Complex stairs, roofs, curved walls, multi-opening storefronts, and curtain-wall grids are not yet exposed.
-- If the request exceeds the current tool surface, explain the missing capability instead of pretending it was modeled.
+- Curtain walls are straight framed/glazed grids; curved curtain walls are not supported.
+- Complex stairs, roofs, slabs with arbitrary polygons, and curved walls are not yet exposed.
+- If a request exceeds the current tool surface, explain the missing capability instead
+  of pretending it was modeled.
