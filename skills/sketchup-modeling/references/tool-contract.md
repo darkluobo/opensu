@@ -3,26 +3,19 @@
 The Skill bridge talks directly to the local SketchUp extension on `127.0.0.1:9876`.
 All architecture dimensions are millimetres.
 
-## Commands
+## Core commands
 
-### Status
+### Status / inspect / validate
 
 ```text
 python scripts/opensu.py status
-```
-
-Checks that the SketchUp extension server is reachable.
-
-### Inspect
-
-```text
 python scripts/opensu.py inspect [--max-entities 200]
+python scripts/opensu.py validate [--max-entities 1000]
 ```
 
-Returns top-level Groups/Components, OpenSU semantic types, names, tags, and bounds.
-Use this before edits and after each meaningful modeling batch.
+Always inspect before edits and validate before completion.
 
-### Create floor
+### Floor
 
 ```text
 python scripts/opensu.py create-floor \
@@ -30,20 +23,15 @@ python scripts/opensu.py create-floor \
   --origin 0 0 0 --name Floor_Level01_001
 ```
 
-Creates one isolated rectangular floor Group.
-
-### Create column
+### Column
 
 ```text
 python scripts/opensu.py create-column \
-  --center 1000 1000 150 \
-  --width 400 --depth 400 --height 3000 \
+  --center 1000 1000 150 --width 400 --depth 400 --height 3000 \
   --name Column_A01_001
 ```
 
-Creates one rectangular vertical solid column. `--center` is the center of the column base.
-
-### Create beam
+### Beam
 
 ```text
 python scripts/opensu.py create-beam \
@@ -51,9 +39,9 @@ python scripts/opensu.py create-beam \
   --width 300 --height 500 --name Beam_A01_B01_001
 ```
 
-Creates one straight rectangular solid beam. Start/end define the bottom centerline and must use the same Z in the current implementation.
+Start/end define the beam bottom centerline and must use the same Z.
 
-### Create wall
+### Wall
 
 ```text
 python scripts/opensu.py create-wall \
@@ -61,99 +49,100 @@ python scripts/opensu.py create-wall \
   --height 3000 --thickness 200 --name Wall_South_001
 ```
 
-Creates one isolated straight wall Group. Start and end must have the same Z. Thickness is centered on the supplied centerline.
+Wall thickness is centered on the supplied centerline.
 
-### Create opening
+## Multiple openings on one wall
 
-By wall name:
-
-```text
-python scripts/opensu.py create-opening \
-  --wall-name Wall_South_001 \
-  --offset 1200 --width 900 --height 2100 --sill 0 \
-  --type door --name DoorOpening_South_001
-```
-
-Or by entity id:
+Call `create-opening` repeatedly against the same wall. The extension stores all opening
+metadata and regenerates a closed wall shell from the complete opening set.
 
 ```text
 python scripts/opensu.py create-opening \
-  --wall-id 1234 \
-  --offset 1800 --width 1800 --height 1500 --sill 900 \
-  --type window --name WindowOpening_East_001
+  --wall-name Wall_Showroom_001 \
+  --offset 800 --width 1000 --height 2200 --sill 0 \
+  --type door --name DoorOpening_001
+
+python scripts/opensu.py create-opening \
+  --wall-name Wall_Showroom_001 \
+  --offset 2600 --width 1800 --height 1800 --sill 700 \
+  --type window --name WindowOpening_001
+
+python scripts/opensu.py create-opening \
+  --wall-name Wall_Showroom_001 \
+  --offset 5000 --width 1800 --height 1800 --sill 700 \
+  --type window --name WindowOpening_002
 ```
 
-The current opening system supports one rectangular opening per OpenSU wall. The opening must remain inside the wall endpoints and below the wall top.
+Rules:
+- openings must stay inside the wall endpoints and height;
+- openings may not overlap in both horizontal and vertical extents;
+- stable opening names must be unique on the wall;
+- when a wall has multiple openings, pass `--opening-name` when creating a door/window assembly.
 
-### Create door assembly
+### Door assembly
 
 ```text
 python scripts/opensu.py create-door \
-  --wall-name Wall_South_001 \
-  --opening-name DoorOpening_South_001 \
-  --frame-width 60 --leaf-depth 40 --gap 5 \
-  --name Door_South_001
+  --wall-name Wall_Showroom_001 --opening-name DoorOpening_001 \
+  --frame-width 60 --leaf-depth 40 --gap 5 --name Door_001
 ```
 
-Creates a simple framed door assembly aligned automatically to an existing door opening. The wall/opening geometry must already exist.
-
-### Create window assembly
+### Window assembly
 
 ```text
 python scripts/opensu.py create-window \
-  --wall-name Wall_East_001 \
-  --opening-name WindowOpening_East_001 \
-  --frame-width 60 --glass-thickness 8 --gap 5 \
-  --name Window_East_001
+  --wall-name Wall_Showroom_001 --opening-name WindowOpening_001 \
+  --frame-width 60 --glass-thickness 8 --gap 5 --name Window_001
 ```
 
-Creates a simple framed window with transparent glass, aligned automatically to an existing window opening.
+## Glass curtain wall / storefront
 
-### Apply material
+```text
+python scripts/opensu.py create-curtain-wall \
+  --start 0 0 150 --end 12000 0 150 \
+  --height 4200 --panel-width 1500 --row-height 2100 \
+  --mullion-width 60 --mullion-depth 120 \
+  --glass-thickness 10 --gap 8 \
+  --frame-color "#363A3D" --glass-color "#9CC9E8" --glass-opacity 0.35 \
+  --name CurtainWall_Showroom_001
+```
 
-By name:
+The requested panel width and row height are target grid sizes. The extension chooses an
+even number of bays/rows across the exact overall width and height, then creates framed
+transparent glass panels. Curtain walls are independent assemblies rather than holes in
+an opaque wall.
+
+Use curtain walls for showroom facades, dealership storefronts, and large glazed grids.
+Use ordinary wall openings + window assemblies for punched windows in opaque walls.
+
+## Materials
 
 ```text
 python scripts/opensu.py apply-material \
-  --name Column_A01_001 \
-  --material-name Concrete \
+  --name Column_A01_001 --material-name Concrete \
   --color "#B8B8B8" --opacity 1.0
 ```
 
-Or by entity id:
+`--opacity` ranges from `0` to `1`. Material application is recursive by default; use
+`--no-recursive` to paint only the selected group/instance.
 
-```text
-python scripts/opensu.py apply-material \
-  --entity-id 1234 \
-  --material-name GlassBlue \
-  --color "#9CC9E8" --opacity 0.35
-```
+## Validation expectations
 
-`--opacity` ranges from `0` to `1`. Material application is recursive by default; pass `--no-recursive` when only the selected group/instance should receive the material.
+`validate` checks, among other things:
+- root loose geometry;
+- duplicate architecture names;
+- manifold solids for floors, walls, columns, and beams;
+- validity/non-overlap of all wall opening metadata;
+- door/window wall linkage;
+- curtain-wall size/grid metadata and presence of glass panels.
 
-### Validate
-
-```text
-python scripts/opensu.py validate [--max-entities 1000]
-```
-
-Checks OpenSU architectural structure and root loose geometry. It also checks manifold solids for floors, walls, columns, and beams, plus wall linkage for door/window assemblies. Treat `valid: false` as incomplete work.
-
-## Modeling rules
-
-- Use stable semantic names.
-- Keep architecture as Groups/Components, not loose root geometry.
-- Preserve existing geometry unless the user asks to change it.
-- Inspect before edits and after modeling batches.
-- Create openings before door/window assemblies.
-- Validate before declaring completion.
-- Never fall back to arbitrary Ruby execution.
-- If a requested operation is not exposed by the current extension, report the limitation instead of fabricating success.
+Treat `valid: false` as incomplete work.
 
 ## Current limitations
 
-- Straight horizontal-plan walls and beams only.
+- Straight horizontal-plan walls, beams, and curtain walls only.
 - Rectangular vertical columns only.
-- One opening per wall.
+- Rectangular wall openings only.
 - Door/window assemblies require OpenSU opening metadata.
-- No stairs, roofs, curved walls, repeated storefront openings, or curtain-wall grids yet.
+- No curved curtain walls, stairs, roofs, arbitrary slab polygons, or curved walls yet.
+- Never fall back to arbitrary Ruby execution.
