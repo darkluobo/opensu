@@ -1,156 +1,94 @@
-# SketchUp MCP (hardened fork)
+# OpenSU
 
-[![CI](https://github.com/NeoNexAI/sketchup-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/NeoNexAI/sketchup-mcp/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/neonexai-sketchup-mcp)](https://pypi.org/project/neonexai-sketchup-mcp/)
-[![Python](https://img.shields.io/pypi/pyversions/neonexai-sketchup-mcp)](https://pypi.org/project/neonexai-sketchup-mcp/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+**OpenSU** is an open-source AI modeling agent for SketchUp. It connects Codex to a local SketchUp extension so natural-language instructions, architectural drawings, semantic building data, and validation workflows can become structured `.skp` geometry.
 
-Connect **SketchUp** to any MCP client (Claude Desktop, Claude Code, etc.) and
-drive it in natural language — create, transform and materialize geometry, run
-boolean operations, chamfer/fillet edges, build woodworking joints, and export
-the scene.
+> Current development checkpoint: **v1.13.0 / Phase 5.3**
 
-## Provenance
+## What OpenSU can do
 
-- Maintained by **[NeoNexAI Agency](https://github.com/NeoNexAI)** (AI
-  consulting studio). Contact: `info@neonexai.com`.
-- Hardened fork of [mhyrr/sketchup-mcp](https://github.com/mhyrr/sketchup-mcp),
-  itself inspired by [blender-mcp](https://github.com/ahujasid/blender-mcp).
-- **What "hardened" means:** the upstream project exposed an `eval_ruby` tool
-  (arbitrary Ruby execution inside SketchUp → full disk/network access). This
-  fork **removes it entirely** — Python server and Ruby extension — and the
-  extension socket listens **only on `127.0.0.1`**. The tool surface is 13
-  explicit, bounded tools. Audit the code yourself before installing, as you
-  would with any third-party software: the diff vs upstream is public.
+- Natural-language architectural modeling in millimetres
+- Floors, walls, columns, beams, doors, windows, curtain walls, ceilings, stairs, roofs, and openings
+- Multi-opening walls and semantic door/window assemblies
+- Safe model editing, Tags, transforms, duplication, diagnostics, batch repair, and controlled deletion
+- Drawing reconstruction through auditable Plan Specs
+- Multi-sheet plan/elevation/section evidence reconciliation
+- Persistent Levels, Grids, and functional Spaces inside the SketchUp model
+- Grid-driven structure such as `3/B` column placement and beam spans
+- Space-driven partition generation when the drawing explicitly supports those walls
+- Geometry and semantic validation before completion
 
----
+## Architecture
 
-## Architecture (two pieces)
-
-SketchUp has no external API: it can only be driven from its **embedded Ruby
-API**. Hence two components working together:
-
-```
-MCP client (Claude Desktop / Claude Code)
-        │  (MCP, stdio)
-        ▼
-  MCP server (Python, this package — uvx)
-        │  (TCP socket 127.0.0.1:9876)
-        ▼
-  SketchUp extension (Ruby, su_mcp/)  ──►  SketchUp
+```text
+User
+  ↓
+Codex + $sketchup-modeling Skill
+  ↓
+OpenSU deterministic Skill bridges
+  ↓
+127.0.0.1:9876 JSON-RPC
+  ↓
+OpenSU SketchUp extension
+  ↓
+SketchUp Ruby API
+  ↓
+.skp model
 ```
 
-## Requirements
+The normal end-user path requires only the **OpenSU RBZ extension** and the bundled Codex Skill. Repository checkout and project-level MCP configuration are optional development workflows.
 
-- **SketchUp** 2021 or later (Windows; the Ruby extension uses only the
-  standard SketchUp Ruby API).
-- **Python 3.10+** and **uv/uvx** (`pip install uv` or
-  `winget install astral-sh.uv`).
+## Safety model
 
-## Installation
+OpenSU keeps the hardened localhost-only design inherited from the NeoNexAI SketchUp MCP project:
 
-### Step 1 — SketchUp extension (Ruby)
+- listens on `127.0.0.1` only
+- no arbitrary Ruby execution
+- bounded modeling/editing tools
+- named Groups/Components rather than loose architectural geometry
+- SketchUp undo operations around mutations
+- explicit validation and uncertainty handling
 
-Copy `su_mcp.rb` **and** the `su_mcp/` folder from this repository into:
-
-```
-%AppData%\SketchUp\SketchUp 20XX\SketchUp\Plugins\
-```
-
-(replace `20XX` with your version). Restart SketchUp, then start the server:
-menu **Extensions → SketchUp MCP → Start Server** (listens on `127.0.0.1:9876`).
-
-Alternative: zip `su_mcp.rb` + `su_mcp/`, rename to `.rbz`, and install via
-`Window → Extension Manager → Install Extension`.
-
-### Step 2 — MCP server (Python)
-
-Pin the version you audited (recommended — avoids silently pulling future
-releases):
-
-**Claude Desktop** — `%AppData%\Claude\claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "sketchup": {
-      "command": "uvx",
-      "args": ["neonexai-sketchup-mcp==1.1.0"]
-    }
-  }
-}
-```
-
-**Claude Code** — same block in `%UserProfile%\.claude.json`, or via CLI:
+## Build the SketchUp extension
 
 ```bash
-claude mcp add sketchup --scope user -- uvx neonexai-sketchup-mcp==1.1.0
+python scripts/build_rbz.py
 ```
 
-**From GitHub instead of PyPI** (pin to a commit for reproducibility):
+The current build creates:
 
-```json
-"args": ["--from", "git+https://github.com/NeoNexAI/sketchup-mcp@main", "neonexai-sketchup-mcp"]
+```text
+dist/opensu-v1.13.0.rbz
 ```
 
-Restart the client. First call to make: `sketchup_status`.
+Install the RBZ through SketchUp Extension Manager, restart SketchUp, then start:
 
----
+```text
+Extensions > MCP Server > Start Server
+```
 
-## Tools (13)
+## Codex Skill
 
-| Tool | What it does |
-|---|---|
-| `sketchup_status` | Verify the connection (call first) |
-| `sketchup_get_selection` | Ids + data of the current selection |
-| `sketchup_create_component` | Create primitive (cube/cylinder/sphere/cone) |
-| `sketchup_transform_component` | Move / rotate / scale by id |
-| `sketchup_delete_component` | Delete by id |
-| `sketchup_set_material` | Apply material/color |
-| `sketchup_export_scene` | Export (skp/dae/obj/stl/png/jpg) |
-| `sketchup_boolean_operation` | Union / difference / intersection of solids |
-| `sketchup_chamfer_edges` | Bevel edges |
-| `sketchup_fillet_edges` | Round edges |
-| `sketchup_create_mortise_tenon` | Mortise & tenon joint |
-| `sketchup_create_dovetail` | Dovetail joint |
-| `sketchup_create_finger_joint` | Finger (box) joint |
+The Skill lives at:
 
-### Example prompts
+```text
+skills/sketchup-modeling/
+```
 
-- "Create a 200×80×40 box at the origin and apply 'Wood_Cherry'."
-- "Select that piece" → `sketchup_get_selection` → "move it 50 up in Z."
-- "Boolean difference: subtract the cylinder (tool) from the block (target)."
-- "Fillet all edges of that board with radius 1.5."
-- "Export the scene to DAE."
+The invocation name remains `$sketchup-modeling` for compatibility, while the product/display name is **OpenSU**.
 
-**Units**: SketchUp models default to **inches**. Tell your assistant which
-units you work in (cm/m) so it converts.
+A typical request can be as simple as:
 
-## What it does NOT do
+```text
+$sketchup-modeling
+根据项目目录里的整套4S店图纸建立当前 SketchUp 模型。
+先索引图纸、轴网和功能区，校核平面/立面/剖面尺寸，
+确认后自动建模，最后 inspect、validate、diagnose。
+```
 
-- **No photorealistic rendering** — render plugins (V-Ray, Enscape, etc.)
-  expose no scripting surface here; keep launching them from their own UI.
-- **No arbitrary code execution** — by design. The 13 tools above are the
-  whole surface.
-- **No network access** — the extension accepts local connections only.
+## Project status
 
-## Configuration (env vars)
+Phase 5.3 includes drawing-set understanding, persistent architectural semantics, and grid/Space-driven modeling. The next planned work is broader batch structural generation and higher-level dealership layout automation.
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `SKETCHUP_MCP_HOST` | `127.0.0.1` | Extension host |
-| `SKETCHUP_MCP_PORT` | `9876` | Extension port |
-| `SKETCHUP_MCP_TIMEOUT` | `30` | Socket timeout (seconds) |
+## Provenance and license
 
-## Troubleshooting
-
-- **"No se pudo conectar con SketchUp"** → the extension server is not
-  running: `Extensions → SketchUp MCP → Start Server`.
-- **Command errors** → open SketchUp's Ruby Console (`Window → Ruby Console`)
-  for the detailed message.
-- **Boolean operation fails** → both entities must be closed (manifold)
-  solids, not open surfaces.
-
-## License
-
-MIT.
+OpenSU is based on the MIT-licensed `NeoNexAI/sketchup-mcp` project and retains the MIT license. See `THIRD_PARTY_NOTICES.md` for attribution and third-party notices.

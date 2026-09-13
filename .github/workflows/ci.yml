@@ -2,12 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, phase1-architecture-mvp, phase2-building-elements, phase2-storefront-multi-openings, phase3-levels-stairs-roof, phase3-advanced-stairs-openings, phase4-edit-repair, phase4-auto-repair, phase5-drawing-to-model, phase5-multisheet-fusion, phase5-sheet-grid-spaces, phase5-grid-driven-layout]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  python-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -18,5 +22,106 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e . pytest
-      - run: python -m py_compile src/sketchup_mcp/*.py
+      - run: python -m py_compile src/sketchup_mcp/*.py skills/sketchup-modeling/scripts/opensu.py skills/sketchup-modeling/scripts/opensu_advanced.py skills/sketchup-modeling/scripts/opensu_edit.py skills/sketchup-modeling/scripts/opensu_repair.py skills/sketchup-modeling/scripts/opensu_plan.py skills/sketchup-modeling/scripts/opensu_multisheet.py skills/sketchup-modeling/scripts/opensu_semantics.py skills/sketchup-modeling/scripts/opensu_layout.py
+      - run: python skills/sketchup-modeling/scripts/opensu.py --help
+      - run: python skills/sketchup-modeling/scripts/opensu_advanced.py create-l-stair --help
+      - run: python skills/sketchup-modeling/scripts/opensu_edit.py transform --help
+      - run: python skills/sketchup-modeling/scripts/opensu_repair.py diagnose --help
+      - run: python skills/sketchup-modeling/scripts/opensu_plan.py --help
+      - run: python skills/sketchup-modeling/scripts/opensu_plan.py lint skills/sketchup-modeling/references/examples/showroom-plan-v1.json
+      - run: python skills/sketchup-modeling/scripts/opensu_multisheet.py --help
+      - run: python skills/sketchup-modeling/scripts/opensu_multisheet.py check skills/sketchup-modeling/references/examples/showroom-multisheet-pack-v1.json
+      - run: python skills/sketchup-modeling/scripts/opensu_semantics.py --help
+      - run: python skills/sketchup-modeling/scripts/opensu_semantics.py lint skills/sketchup-modeling/references/examples/showroom-semantics-v1.json
+      - run: python skills/sketchup-modeling/scripts/opensu_layout.py --help
+      - run: python skills/sketchup-modeling/scripts/opensu_layout.py grid-column --help
+      - run: python skills/sketchup-modeling/scripts/opensu_layout.py space-walls --help
       - run: python -m pytest tests/ -v
+
+  ruby-syntax:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby-version: ["2.7", "3.2"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+      - name: Check SketchUp extension Ruby syntax
+        run: |
+          ruby -c su_mcp.rb
+          ruby -c su_mcp/su_mcp.rb
+          ruby -c su_mcp/su_mcp/bootstrap.rb
+          ruby -c su_mcp/su_mcp/main.rb
+          ruby -c su_mcp/su_mcp/architecture.rb
+          ruby -c su_mcp/su_mcp/architecture_completion.rb
+          ruby -c su_mcp/su_mcp/architecture_validation.rb
+          ruby -c su_mcp/su_mcp/building_elements.rb
+          ruby -c su_mcp/su_mcp/building_elements_validation.rb
+          ruby -c su_mcp/su_mcp/storefront.rb
+          ruby -c su_mcp/su_mcp/storefront_validation.rb
+          ruby -c su_mcp/su_mcp/levels_stairs_roof.rb
+          ruby -c su_mcp/su_mcp/levels_stairs_roof_validation.rb
+          ruby -c su_mcp/su_mcp/advanced_stairs_openings.rb
+          ruby -c su_mcp/su_mcp/advanced_stairs_openings_validation.rb
+          ruby -c su_mcp/su_mcp/model_editing.rb
+          ruby -c su_mcp/su_mcp/auto_repair.rb
+          ruby -c su_mcp/su_mcp/drawing_semantics.rb
+          ruby -c su_mcp/su_mcp/drawing_semantics_validation.rb
+          ruby -c su_mcp/su_mcp/semantic_layout.rb
+          ruby -c su_mcp/su_mcp/semantic_layout_validation.rb
+
+  package-rbz:
+    needs: [python-test, ruby-syntax]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build RBZ
+        run: python scripts/build_rbz.py
+      - name: Verify package contents
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          rbz = Path('dist/opensu-v1.13.0.rbz')
+          if not rbz.is_file():
+              raise SystemExit('RBZ was not created')
+          with ZipFile(rbz) as archive:
+              names = set(archive.namelist())
+          required = {
+              'su_mcp.rb',
+              'su_mcp/su_mcp/bootstrap.rb',
+              'su_mcp/su_mcp/main.rb',
+              'su_mcp/su_mcp/architecture.rb',
+              'su_mcp/su_mcp/architecture_completion.rb',
+              'su_mcp/su_mcp/architecture_validation.rb',
+              'su_mcp/su_mcp/building_elements.rb',
+              'su_mcp/su_mcp/building_elements_validation.rb',
+              'su_mcp/su_mcp/storefront.rb',
+              'su_mcp/su_mcp/storefront_validation.rb',
+              'su_mcp/su_mcp/levels_stairs_roof.rb',
+              'su_mcp/su_mcp/levels_stairs_roof_validation.rb',
+              'su_mcp/su_mcp/advanced_stairs_openings.rb',
+              'su_mcp/su_mcp/advanced_stairs_openings_validation.rb',
+              'su_mcp/su_mcp/model_editing.rb',
+              'su_mcp/su_mcp/auto_repair.rb',
+              'su_mcp/su_mcp/drawing_semantics.rb',
+              'su_mcp/su_mcp/drawing_semantics_validation.rb',
+              'su_mcp/su_mcp/semantic_layout.rb',
+              'su_mcp/su_mcp/semantic_layout_validation.rb',
+          }
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit(f'Missing RBZ files: {missing}')
+          print(f'OpenSU RBZ OK: {rbz} ({rbz.stat().st_size} bytes)')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opensu-v1.13.0
+          path: dist/opensu-v1.13.0.rbz
+          if-no-files-found: error

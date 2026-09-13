@@ -5,11 +5,11 @@ require 'socket'
 
 module SU_MCP
   unless file_loaded?(__FILE__)
-    ex = SketchupExtension.new('SketchUp MCP (NeoNexAI)', 'su_mcp/main')
-    ex.description = 'MCP server for SketchUp — NeoNexAI hardened fork (curated tools, no arbitrary code execution)'
-    ex.version     = '1.0.0'
+    ex = SketchupExtension.new('OpenSU', 'su_mcp/su_mcp/bootstrap')
+    ex.description = 'Open-source AI modeling agent bridge for SketchUp — architecture, drawing reconstruction, persistent building semantics, grid-driven layout, diagnostics, and controlled repair; no arbitrary code execution'
+    ex.version     = '1.13.0'
     ex.copyright   = '2026'
     Sketchup.register_extension(ex, true)
     file_loaded(__FILE__)
   end
-end 
+end

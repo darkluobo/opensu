@@ -1,15 +1,15 @@
-"""Tests del servidor MCP que no requieren SketchUp ni una extension viva.
+"""MCP server tests that do not require a live SketchUp instance.
 
-Cubren la propiedad de seguridad central de este fork (ver SECURITY.md): que
-no existe ninguna via de ejecucion de codigo arbitrario. Si una futura edicion
-la reintroduce por accidente, este test la detiene en CI antes de publicar.
+They cover the hardened security property and the expected public tool surface
+for the complete Phase 1 architecture-enabled server entrypoint.
 """
 
 from pathlib import Path
 
-from sketchup_mcp import server
+from sketchup_mcp import phase1_server as server
 
 SRC_DIR = Path(__file__).resolve().parent.parent / "src" / "sketchup_mcp"
+RUBY_DIR = Path(__file__).resolve().parent.parent / "su_mcp" / "su_mcp"
 
 EXPECTED_TOOLS = {
     "sketchup_status",
@@ -25,11 +25,13 @@ EXPECTED_TOOLS = {
     "sketchup_create_mortise_tenon",
     "sketchup_create_dovetail",
     "sketchup_create_finger_joint",
+    "sketchup_inspect_model",
+    "sketchup_create_floor",
+    "sketchup_create_wall",
+    "sketchup_create_opening",
+    "sketchup_validate_model",
 }
 
-# Construido por concatenacion a proposito: la ejecucion de codigo arbitrario
-# es justo la propiedad que este fork elimina, y queremos comprobar su
-# AUSENCIA en el texto fuente sin que el propio test parezca invocarla.
 _CODE_EXEC_TOKEN = "ev" + "al" + "_ruby"
 _RUBY_EXEC_TOKEN = "ev" + "al" + "("
 
@@ -38,37 +40,35 @@ def _registered_tool_names() -> set[str]:
     return set(server.mcp._tool_manager._tools.keys())
 
 
-def test_expone_exactamente_las_13_tools_prefijadas():
+def test_exposes_expected_tool_surface():
     assert _registered_tool_names() == EXPECTED_TOOLS
 
 
-def test_todas_las_tools_llevan_el_prefijo_sketchup():
+def test_all_tools_use_sketchup_prefix():
     assert all(name.startswith("sketchup_") for name in _registered_tool_names())
 
 
-def test_eval_ruby_no_esta_registrado_como_tool():
-    # Propiedad de seguridad central del fork (ver SECURITY.md).
+def test_arbitrary_ruby_execution_is_not_registered():
     assert _CODE_EXEC_TOKEN not in _registered_tool_names()
     assert not hasattr(server, _CODE_EXEC_TOKEN)
+    assert not hasattr(server.base, _CODE_EXEC_TOKEN)
 
 
-def test_codigo_fuente_python_no_contiene_eval_ruby():
-    # Cinturon y tirantes: ni siquiera como funcion sin registrar.
+def test_python_source_contains_no_arbitrary_ruby_tool():
     for path in SRC_DIR.rglob("*.py"):
         text = path.read_text(encoding="utf-8")
-        assert _CODE_EXEC_TOKEN not in text, f"'{_CODE_EXEC_TOKEN}' reaparecio en {path}"
+        assert _CODE_EXEC_TOKEN not in text, f"'{_CODE_EXEC_TOKEN}' reappeared in {path}"
 
 
-def test_conexion_falla_con_error_accionable_sin_sketchup():
+def test_connection_failure_is_actionable_without_sketchup():
     import json
 
-    result = json.loads(server.sketchup_status())
+    result = json.loads(server.base.sketchup_status())
     assert result["ok"] is False
     assert "Start Server" in result["error"]
 
 
-def test_extension_ruby_no_contiene_ejecucion_de_codigo():
-    # Cubre tambien el lado Ruby (su_mcp/su_mcp/main.rb): sin eval(...).
-    ruby_main = SRC_DIR.parent.parent / "su_mcp" / "su_mcp" / "main.rb"
-    text = ruby_main.read_text(encoding="utf-8")
-    assert _RUBY_EXEC_TOKEN not in text, "la ejecucion de codigo reaparecio en la extension Ruby"
+def test_ruby_extension_contains_no_eval_execution():
+    for path in RUBY_DIR.rglob("*.rb"):
+        text = path.read_text(encoding="utf-8")
+        assert _RUBY_EXEC_TOKEN not in text, f"arbitrary Ruby execution reappeared in {path}"

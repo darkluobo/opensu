@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opensu.local/schemas/plan-spec-v1.json",
+  "title": "OpenSU Plan Spec v1",
+  "type": "object",
+  "required": ["schema_version", "project"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "project": {
+      "type": "object",
+      "required": ["name", "units"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "units": {"const": "mm"},
+        "source": {"type": "string"},
+        "source_revision": {"type": "string"},
+        "coordinate_note": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "assumptions": {"type": "array", "items": {"type": "string"}},
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["description", "blocking"],
+        "properties": {
+          "id": {"type": "string"},
+          "description": {"type": "string", "minLength": 1},
+          "blocking": {"type": "boolean"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "levels": {"type": "array", "items": {"$ref": "#/$defs/level"}},
+    "floors": {"type": "array", "items": {"$ref": "#/$defs/slab"}},
+    "columns": {"type": "array", "items": {"$ref": "#/$defs/column"}},
+    "beams": {"type": "array", "items": {"$ref": "#/$defs/beam"}},
+    "walls": {"type": "array", "items": {"$ref": "#/$defs/wall"}},
+    "openings": {"type": "array", "items": {"$ref": "#/$defs/opening"}},
+    "curtain_walls": {"type": "array", "items": {"$ref": "#/$defs/curtainWall"}},
+    "ceilings": {"type": "array", "items": {"$ref": "#/$defs/slab"}},
+    "stairs": {"type": "array", "items": {"$ref": "#/$defs/stair"}},
+    "roofs": {"type": "array", "items": {"$ref": "#/$defs/roof"}},
+    "slab_openings": {"type": "array", "items": {"$ref": "#/$defs/slabOpening"}},
+    "materials": {"type": "array", "items": {"$ref": "#/$defs/material"}},
+    "tags": {"type": "array", "items": {"$ref": "#/$defs/tagAssignment"}}
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "point3": {
+      "type": "array",
+      "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}],
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "confidence": {"enum": ["high", "medium", "low"]},
+        "source_ref": {"type": "string"},
+        "note": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "named": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "level_name": {"type": "string"},
+        "evidence": {"$ref": "#/$defs/evidence"}
+      }
+    },
+    "level": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["elevation_mm"],
+          "properties": {
+            "elevation_mm": {"type": "number"},
+            "floor_to_floor_mm": {"type": "number", "exclusiveMinimum": 0}
+          }
+        }
+      ]
+    },
+    "slab": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["thickness_mm"],
+          "properties": {
+            "shape": {"enum": ["rect", "polygon"]},
+            "origin_mm": {"$ref": "#/$defs/point3"},
+            "width_mm": {"type": "number", "exclusiveMinimum": 0},
+            "depth_mm": {"type": "number", "exclusiveMinimum": 0},
+            "points_mm": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/point3"}},
+            "thickness_mm": {"type": "number", "exclusiveMinimum": 0}
+          }
+        }
+      ]
+    },
+    "column": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["center_mm", "width_mm", "depth_mm", "height_mm"],
+          "properties": {
+            "center_mm": {"$ref": "#/$defs/point3"},
+            "width_mm": {"type": "number", "exclusiveMinimum": 0},
+            "depth_mm": {"type": "number", "exclusiveMinimum": 0},
+            "height_mm": {"type": "number", "exclusiveMinimum": 0}
+          }
+        }
+      ]
+    },
+    "beam": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["start_mm", "end_mm", "width_mm", "height_mm"],
+          "properties": {
+            "start_mm": {"$ref": "#/$defs/point3"},
+            "end_mm": {"$ref": "#/$defs/point3"},
+            "width_mm": {"type": "number", "exclusiveMinimum": 0},
+            "height_mm": {"type": "number", "exclusiveMinimum": 0}
+          }
+        }
+      ]
+    },
+    "wall": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["start_mm", "end_mm", "height_mm", "thickness_mm"],
+          "properties": {
+            "start_mm": {"$ref": "#/$defs/point3"},
+            "end_mm": {"$ref": "#/$defs/point3"},
+            "height_mm": {"type": "number", "exclusiveMinimum": 0},
+            "thickness_mm": {"type": "number", "exclusiveMinimum": 0}
+          }
+        }
+      ]
+    },
+    "opening": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["wall_name", "offset_mm", "width_mm", "height_mm"],
+          "properties": {
+            "wall_name": {"type": "string", "minLength": 1},
+            "opening_type": {"enum": ["door", "window", "void"]},
+            "offset_mm": {"type": "number", "minimum": 0},
+            "width_mm": {"type": "number", "exclusiveMinimum": 0},
+            "height_mm": {"type": "number", "exclusiveMinimum": 0},
+            "sill_height_mm": {"type": "number", "minimum": 0},
+            "create_assembly": {"type": "boolean"},
+            "assembly_name": {"type": "string"}
+          }
+        }
+      ]
+    },
+    "curtainWall": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["start_mm", "end_mm", "height_mm"],
+          "properties": {
+            "start_mm": {"$ref": "#/$defs/point3"},
+            "end_mm": {"$ref": "#/$defs/point3"},
+            "height_mm": {"type": "number", "exclusiveMinimum": 0},
+            "panel_width_mm": {"type": "number", "exclusiveMinimum": 0},
+            "row_height_mm": {"type": "number", "exclusiveMinimum": 0}
+          }
+        }
+      ]
+    },
+    "stair": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": {"enum": ["straight", "l", "u"]},
+            "start_mm": {"$ref": "#/$defs/point3"},
+            "end_mm": {"$ref": "#/$defs/point3"},
+            "origin_mm": {"$ref": "#/$defs/point3"},
+            "direction": {"enum": ["x+", "x-", "y+", "y-"]},
+            "turn": {"enum": ["left", "right"]},
+            "width_mm": {"type": "number", "exclusiveMinimum": 0},
+            "run1_mm": {"type": "number", "exclusiveMinimum": 0},
+            "run2_mm": {"type": "number", "exclusiveMinimum": 0},
+            "end_elevation_mm": {"type": "number"}
+          }
+        }
+      ]
+    },
+    "roof": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["origin_mm", "width_mm", "depth_mm"],
+          "properties": {
+            "origin_mm": {"$ref": "#/$defs/point3"},
+            "width_mm": {"type": "number", "exclusiveMinimum": 0},
+            "depth_mm": {"type": "number", "exclusiveMinimum": 0},
+            "slab_thickness_mm": {"type": "number", "exclusiveMinimum": 0},
+            "parapet_height_mm": {"type": "number", "minimum": 0},
+            "parapet_thickness_mm": {"type": "number", "exclusiveMinimum": 0}
+          }
+        }
+      ]
+    },
+    "slabOpening": {
+      "allOf": [
+        {"$ref": "#/$defs/named"},
+        {
+          "type": "object",
+          "required": ["target_name", "offset_x_mm", "offset_y_mm", "width_mm", "depth_mm"],
+          "properties": {
+            "target_name": {"type": "string", "minLength": 1},
+            "offset_x_mm": {"type": "number", "exclusiveMinimum": 0},
+            "offset_y_mm": {"type": "number", "exclusiveMinimum": 0},
+            "width_mm": {"type": "number", "exclusiveMinimum": 0},
+            "depth_mm": {"type": "number", "exclusiveMinimum": 0},
+            "opening_type": {"type": "string"}
+          }
+        }
+      ]
+    },
+    "material": {
+      "type": "object",
+      "required": ["target_name"],
+      "properties": {
+        "target_name": {"type": "string", "minLength": 1},
+        "material_name": {"type": "string"},
+        "color_hex": {"type": "string"},
+        "opacity": {"type": "number", "minimum": 0, "maximum": 1},
+        "recursive": {"type": "boolean"}
+      }
+    },
+    "tagAssignment": {
+      "type": "object",
+      "required": ["tag_name", "target_names"],
+      "properties": {
+        "tag_name": {"type": "string", "minLength": 1},
+        "target_names": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  }
+}

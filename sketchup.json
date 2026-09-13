@@ -1,28 +1,21 @@
 {
-  "name": "sketchup",
-  "description": "SketchUp integration through the Model Context Protocol (hardened fork, curated tools, no code execution)",
-  "package": "neonexai-sketchup-mcp",
-  "module": "sketchup_mcp.server",
+  "name": "opensu",
+  "description": "OpenSU — open-source AI modeling agent for SketchUp with bounded local automation and semantic building workflows",
+  "package": "opensu-sketchup",
+  "module": "sketchup_mcp.phase1_server",
   "object": "mcp",
   "tools": [
     "sketchup_status",
-    "sketchup_get_selection",
-    "sketchup_create_component",
-    "sketchup_transform_component",
-    "sketchup_delete_component",
-    "sketchup_set_material",
-    "sketchup_export_scene",
-    "sketchup_boolean_operation",
-    "sketchup_chamfer_edges",
-    "sketchup_fillet_edges",
-    "sketchup_create_mortise_tenon",
-    "sketchup_create_dovetail",
-    "sketchup_create_finger_joint"
+    "sketchup_inspect_model",
+    "sketchup_create_floor",
+    "sketchup_create_wall",
+    "sketchup_create_opening",
+    "sketchup_validate_model"
   ],
   "mcpServers": {
-    "sketchup": {
+    "opensu": {
       "command": "uvx",
-      "args": ["neonexai-sketchup-mcp==1.1.0"]
+      "args": ["opensu-sketchup==1.13.0"]
     }
   }
 }

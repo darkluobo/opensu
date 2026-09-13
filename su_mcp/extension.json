@@ -1,10 +1,10 @@
 {
-  "name": "SketchUp MCP Server (NeoNexAI)",
-  "description": "Model Context Protocol server for SketchUp — NeoNexAI hardened fork (no arbitrary code execution)",
-  "creator": "NeoNexAI Agency",
+  "name": "OpenSU",
+  "description": "Open-source AI modeling agent bridge for SketchUp with bounded local automation, drawing reconstruction, and semantic building workflows",
+  "creator": "darkluobo / OpenSU contributors",
   "copyright": "2026",
   "license": "MIT",
-  "product_id": "NEONEXAI_SU_MCP_SERVER",
-  "version": "1.0.0",
+  "product_id": "OPENSU_SKETCHUP_AGENT",
+  "version": "1.13.0",
   "build": "1"
 }
