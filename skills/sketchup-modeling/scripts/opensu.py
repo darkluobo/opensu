@@ -121,17 +121,30 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("status", help="Check whether the SketchUp extension server is reachable.")
 
-    p = sub.add_parser("inspect", help="Inspect top-level SketchUp groups/components.")
+    p = sub.add_parser("inspect", help="Inspect top-level SketchUp groups/components and defined levels.")
     p.add_argument("--max-entities", type=int, default=200)
 
-    p = sub.add_parser("validate", help="Validate OpenSU architectural geometry.")
+    p = sub.add_parser("validate", help="Validate OpenSU architectural geometry and level metadata.")
     p.add_argument("--max-entities", type=int, default=1000)
+
+    p = sub.add_parser("define-level", help="Define a model-level storey elevation in millimetres.")
+    p.add_argument("--name", required=True)
+    p.add_argument("--elevation", type=float, required=True)
+    p.add_argument("--floor-to-floor", type=float)
 
     p = sub.add_parser("create-floor", help="Create a rectangular floor/slab in millimetres.")
     p.add_argument("--width", type=float, required=True)
     p.add_argument("--depth", type=float, required=True)
     p.add_argument("--thickness", type=float, default=150.0)
     p.add_argument("--origin", nargs=3, type=float, metavar=("X", "Y", "Z"), default=[0.0, 0.0, 0.0])
+    p.add_argument("--name")
+
+    p = sub.add_parser("create-ceiling", help="Create a rectangular ceiling slab; origin is the lower face.")
+    p.add_argument("--width", type=float, required=True)
+    p.add_argument("--depth", type=float, required=True)
+    p.add_argument("--thickness", type=float, default=100.0)
+    p.add_argument("--origin", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
+    p.add_argument("--level-name")
     p.add_argument("--name")
 
     p = sub.add_parser("create-wall", help="Create a straight wall from a centerline in millimetres.")
@@ -153,6 +166,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--end", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
     p.add_argument("--width", type=float, default=300.0)
     p.add_argument("--height", type=float, default=500.0)
+    p.add_argument("--name")
+
+    p = sub.add_parser("create-stair", help="Create a straight stair between two 3D centerline endpoints.")
+    p.add_argument("--start", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
+    p.add_argument("--end", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
+    p.add_argument("--width", type=float, default=1200.0)
+    p.add_argument("--riser-count", type=int)
+    p.add_argument("--target-riser-height", type=float, default=165.0)
+    p.add_argument("--level-name")
     p.add_argument("--name")
 
     p = sub.add_parser("create-opening", help="Add a rectangular opening to an OpenSU wall; may be called repeatedly on the same wall.")
@@ -195,6 +217,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--glass-opacity", type=float, default=0.35)
     p.add_argument("--name")
 
+    p = sub.add_parser("create-flat-roof", help="Create a rectangular flat roof slab with optional parapets.")
+    p.add_argument("--origin", nargs=3, type=float, metavar=("X", "Y", "Z"), required=True)
+    p.add_argument("--width", type=float, required=True)
+    p.add_argument("--depth", type=float, required=True)
+    p.add_argument("--slab-thickness", type=float, default=180.0)
+    p.add_argument("--parapet-height", type=float, default=900.0)
+    p.add_argument("--parapet-thickness", type=float, default=150.0)
+    p.add_argument("--level-name")
+    p.add_argument("--name")
+
     p = sub.add_parser("apply-material", help="Apply a color/opacity material to an existing entity.")
     target = p.add_mutually_exclusive_group(required=True)
     target.add_argument("--entity-id", type=int)
@@ -216,6 +248,14 @@ def main() -> int:
             result = _inspect(args.max_entities)
         elif args.command == "validate":
             result = _send("validate_model", {"max_entities": args.max_entities})
+        elif args.command == "define-level":
+            payload: dict[str, Any] = {
+                "name": args.name,
+                "elevation_mm": args.elevation,
+            }
+            if args.floor_to_floor is not None:
+                payload["floor_to_floor_mm"] = args.floor_to_floor
+            result = _send("define_level", payload)
         elif args.command == "create-floor":
             result = _send(
                 "create_floor",
@@ -224,6 +264,18 @@ def main() -> int:
                     "depth_mm": args.depth,
                     "thickness_mm": args.thickness,
                     "origin": args.origin,
+                    "name": args.name,
+                },
+            )
+        elif args.command == "create-ceiling":
+            result = _send(
+                "create_ceiling",
+                {
+                    "width_mm": args.width,
+                    "depth_mm": args.depth,
+                    "thickness_mm": args.thickness,
+                    "origin_mm": args.origin,
+                    "level_name": args.level_name,
                     "name": args.name,
                 },
             )
@@ -260,6 +312,18 @@ def main() -> int:
                     "name": args.name,
                 },
             )
+        elif args.command == "create-stair":
+            payload = {
+                "start_mm": args.start,
+                "end_mm": args.end,
+                "width_mm": args.width,
+                "target_riser_height_mm": args.target_riser_height,
+                "level_name": args.level_name,
+                "name": args.name,
+            }
+            if args.riser_count is not None:
+                payload["riser_count"] = args.riser_count
+            result = _send("create_stair", payload)
         elif args.command == "create-opening":
             wall_id = args.wall_id if args.wall_id is not None else _find_wall_id(args.wall_name)
             result = _send(
@@ -276,7 +340,7 @@ def main() -> int:
             )
         elif args.command in {"create-door", "create-window"}:
             wall_id = args.wall_id if args.wall_id is not None else _find_wall_id(args.wall_name)
-            payload: dict[str, Any] = {
+            payload = {
                 "wall_id": wall_id,
                 "opening_name": args.opening_name,
                 "frame_width_mm": args.frame_width,
@@ -308,6 +372,20 @@ def main() -> int:
                 "name": args.name,
             }
             result = _send("create_curtain_wall", payload)
+        elif args.command == "create-flat-roof":
+            result = _send(
+                "create_flat_roof",
+                {
+                    "origin_mm": args.origin,
+                    "width_mm": args.width,
+                    "depth_mm": args.depth,
+                    "slab_thickness_mm": args.slab_thickness,
+                    "parapet_height_mm": args.parapet_height,
+                    "parapet_thickness_mm": args.parapet_thickness,
+                    "level_name": args.level_name,
+                    "name": args.name,
+                },
+            )
         elif args.command == "apply-material":
             entity_id = args.entity_id if args.entity_id is not None else _find_entity_id(args.name)
             result = _send(
