@@ -3,116 +3,136 @@ name: sketchup-modeling
 description: >-
   Control a local SketchUp model from Codex through the installed OpenSU/SketchUp MCP
   extension. Use for natural-language architectural modeling, reconstruction from one or
-  many drawings/PDFs/images, persistent grid and room-program semantics, inspection,
-  organization, repair, and validation. Supports auditable Plan Specs, cross-sheet evidence
-  fusion, levels, floors, walls, columns, beams, openings, doors/windows, curtain walls,
-  ceilings, stairs, roofs, Tags, materials, semantic edits, batch repair, and controlled deletion.
+  many drawings/PDFs/images, persistent levels/grids/spaces, grid-driven structure,
+  space-driven partitions, inspection, organization, repair, and validation. Supports
+  auditable Plan Specs, cross-sheet evidence fusion, floors, walls, columns, beams,
+  openings, doors/windows, curtain walls, ceilings, stairs, roofs, Tags, materials,
+  semantic edits, batch repair, and controlled deletion.
 ---
 
 # SketchUp Modeling
 
-Use the bundled deterministic bridges. Do not replace an available command with ad-hoc
-socket code or arbitrary Ruby.
+Use the bundled deterministic bridges instead of ad-hoc socket code or arbitrary Ruby:
 
-- `scripts/opensu.py` — core modeling and validation.
+- `scripts/opensu.py` — core modeling, levels, materials, inspect and validate.
 - `scripts/opensu_advanced.py` — L/U stairs, polygon slabs/ceilings, slab/roof openings.
 - `scripts/opensu_edit.py` — single-entity semantic edits.
 - `scripts/opensu_repair.py` — search, diagnosis, batch repair, controlled deletion.
 - `scripts/opensu_plan.py` — drawing-derived Plan Spec lint + execution.
 - `scripts/opensu_multisheet.py` — cross-sheet evidence reconciliation.
-- `scripts/opensu_semantics.py` — automatic sheet indexing plus persistent grids/spaces.
+- `scripts/opensu_semantics.py` — drawing sheet index plus persistent grids/spaces.
+- `scripts/opensu_layout.py` — grid intersection, grid columns/beams, Space partitions, advisory program strategy.
 
 Resolve scripts relative to this Skill directory.
 
 ## Always start with the live model
 
 1. Run `python scripts/opensu.py status`.
-2. If connection fails, ask the user to open SketchUp and choose
-   `Extensions > MCP Server > Start Server`, then retry.
+2. If connection fails, ask the user to open SketchUp and choose `Extensions > MCP Server > Start Server`.
 3. Run `python scripts/opensu.py inspect` before mutations.
 4. Use millimetres for architecture.
 5. Preserve existing user geometry unless the request explicitly changes it.
-6. Inspect existing levels, grids, spaces, names, and Tags before creating duplicates.
+6. Inspect existing levels, grids, spaces, names, Tags, and semantic layout relationships before creating duplicates.
 
 ## Drawing-set workflow
 
-For PDF/image/CAD-export reconstruction, do not model directly from visual impression.
-Use this pipeline:
+For PDF/image/CAD-export reconstruction, never model directly from visual impression. Use:
 
 ```text
 sheet index
-→ read/review sheets
-→ establish XYZ + levels + grids
+→ read/review actual sheets
+→ establish XYZ + levels + structural grids
 → multi-sheet evidence pack when >1 source contributes
-→ semantic grid/space spec
+→ semantic Grid/Space spec
 → Plan Spec
 → cross-sheet check
 → semantic lint
 → Plan Spec lint
 → Plan Spec execute
 → semantic apply
+→ grid/space-driven layout where explicitly supported
 → inspect
 → validate
-→ diagnose/repair if needed
+→ diagnose and smallest repair
 ```
 
-Read these references when relevant:
+Read when relevant:
 
 - `references/drawing-reconstruction.md`
 - `references/multisheet-fusion.md`
 - `references/sheet-grid-spaces.md`
+- `references/grid-driven-layout.md`
 - `references/plan-spec.schema.json`
 
-### 1. Auto-index the drawing folder
+### Sheet indexing
 
-When a project directory contains a drawing set, first run:
+Start a drawing set with:
 
 ```text
 python scripts/opensu_semantics.py index-sheets <drawing-folder> --output sheet-index.json
 ```
 
-The index is filename-based only. Treat it as navigation assistance, not evidence. Then
-inspect the actual files/pages and correct sheet id, kind, title, revision, and role as needed.
+Filename inference is navigation assistance only. Inspect the real pages and correct sheet id,
+kind, title, revision, and role. Never silently combine duplicate sheet ids; determine the current revision.
 
-Never silently combine duplicate sheet ids. Determine which revision/status is current.
+### Evidence priority
 
-### 2. Establish coordinates and grids
+Single-sheet authority, strongest first:
 
-Use a stable project coordinate system. For conventional architectural grids, prefer:
+1. printed dimensions / written levels
+2. grid and chained dimensions
+3. repeated confirmed modules
+4. geometry derived from exact dimensions
+5. calibrated scale
+6. pixel estimate only with explicit approximation permission
 
-- numbered grids as constant X (`axis=x`)
-- lettered grids as constant Y (`axis=y`)
+Multi-sheet checker vocabulary, strongest first:
 
-For `A/3`, this normally means `X=grid 3`, `Y=grid A`. Follow the real documents if they
-clearly use another convention, but never change convention midway.
+1. `printed_dimension`
+2. `grid_or_dimension_chain`
+3. `explicit_detail`
+4. `derived_from_exact`
+5. `calibrated_scale`
+6. `pixel_estimate`
 
-Use exact printed grid/dimension chains before scale or pixel inference. Do not force
-partitions/facade modules onto structural grids unless drawings support that relationship.
+Never average contradictory authoritative dimensions. Equal-strength disagreement beyond tolerance is blocking.
 
-### 3. Record functional spaces
+### Multi-sheet evidence
 
-Use spaces for persistent room/zone semantics, not fake geometry. A space stores a simple
-2D boundary, level, computed area, program type, department/zone, and source reference.
+Plans normally control XY; elevations/sections normally control Z/heights; schedules/details confirm local sizes.
+Run:
 
-For dealership projects, useful program types include:
+```text
+python scripts/opensu_multisheet.py template
+python scripts/opensu_multisheet.py check multisheet-pack.json
+```
 
-- `showroom`
-- `sales`
-- `reception`
-- `customer_lounge`
-- `delivery`
-- `aftersales_reception`
-- `workshop`
-- `parts`
-- `office`
-- `support`
-- `circulation`
-- `service`
-- `storage`
-- `other`
+If `blocking_conflicts` or unresolved blocking uncertainties remain, do not model unless the user explicitly resolves/accepts them.
+Use stable semantic targets such as `walls.Wall_South_001.height_mm` or `levels.Level_02.elevation_mm`, never unstable list indexes.
 
-Program semantics may influence modeling strategy but never override dimensions. Example:
-`showroom` suggests checking for glazed frontage; it does not authorize inventing curtain wall geometry.
+### Plan Spec
+
+Commands:
+
+```text
+python scripts/opensu_plan.py template
+python scripts/opensu_plan.py lint plan.json
+python scripts/opensu_plan.py execute plan.json
+```
+
+Execution refuses lint errors, blocking uncertainties by default, and conflicting root names. Do not bypass guards merely to continue.
+
+## Persistent levels, grids, and spaces
+
+Levels, grids, and spaces are model semantics, not fake drawing geometry.
+
+Default architectural grid convention:
+
+- numbered grid = X axis
+- letter grid = Y axis
+- `3/B` = X from grid `3`, Y from grid `B`
+
+Follow the real project if its convention differs, but never change convention midway.
 
 Semantic commands:
 
@@ -122,105 +142,100 @@ python scripts/opensu_semantics.py lint semantics.json
 python scripts/opensu_semantics.py apply semantics.json
 ```
 
-`apply` requires referenced levels to already exist in SketchUp. It persists Grid/Space data
-inside the `.skp`, then runs inspect + validate.
+Spaces store level, 2D boundary, area, program type, department/zone, and source reference.
+Useful dealership program types include `showroom`, `sales`, `reception`, `customer_lounge`,
+`delivery`, `aftersales_reception`, `workshop`, `parts`, `office`, `support`, `circulation`,
+`service`, `storage`, and `other`.
 
-### 4. Evidence priority
+Program semantics guide reasoning only. They never override authoritative geometry evidence.
 
-For a single drawing, prefer:
+## Grid-driven structure
 
-1. printed dimensions / written levels
-2. grid and chained dimensions
-3. repeated confirmed modules
-4. geometry derived from exact dimensions
-5. calibrated scale
-6. pixel estimate only when approximation is explicitly acceptable
-
-For multi-sheet work, use the exact basis vocabulary understood by the checker:
-
-1. `printed_dimension`
-2. `grid_or_dimension_chain`
-3. `explicit_detail`
-4. `derived_from_exact`
-5. `calibrated_scale`
-6. `pixel_estimate`
-
-Never average contradictory authoritative dimensions. A conflict between equally strong
-sources is blocking until resolved.
-
-### 5. Multi-sheet Pack
-
-If more than one drawing contributes to the model, inventory the sources and encode claims.
-Use plans mainly for XY, elevations/sections for Z/heights, and schedules/details for local
-exact sizes.
-
-Run:
+Prefer persisted grids over manually retyping coordinates when the drawings explicitly place structure on grids.
 
 ```text
-python scripts/opensu_multisheet.py template
-python scripts/opensu_multisheet.py check multisheet-pack.json
+python scripts/opensu_layout.py grid-point --at 3/B --level Level_01
+python scripts/opensu_layout.py grid-column --at 3/B --level Level_01 --width 500 --depth 500
+python scripts/opensu_layout.py grid-beam --from 1/A --to 5/A --level Level_02 --bottom-offset -600
 ```
 
-If `blocking_conflicts` is non-empty, do not model. Report target, source sheets, values,
-and tolerance. If `blocking_uncertainties` remains, ask the user unless approximation was
-explicitly authorized.
+Rules:
 
-Use stable semantic targets such as:
+- `grid-column` centers the column at the verified intersection.
+- If column `--height` is omitted, the referenced Level must have `floor_to_floor_mm`; otherwise ask/provide height.
+- Beam endpoints come from two verified intersections and use the referenced Level plus bottom offset.
+- Never create a column/beam on a grid merely because a grid exists; structural placement still requires plan evidence or explicit user instruction.
+- After grid-driven structural batches, inspect and validate.
+
+## Space-driven partitions
+
+**A Space is not automatically a room and a Space boundary is not automatically a wall.**
+A showroom, workshop, lounge, or reception zone may have open edges.
+
+Only convert Space edges to walls when the plan or user explicitly indicates physical partitions.
+
+All perimeter edges:
 
 ```text
-walls.Wall_South_001.height_mm
-walls.Wall_South_001.end_mm[0]
-openings.Door_Main_Opening_001.width_mm
-levels.Level_02.elevation_mm
-curtain_walls.CurtainWall_Showroom_001.height_mm
+python scripts/opensu_layout.py space-walls --space Office_01 --thickness 100
 ```
 
-Never target unstable list indexes like `walls[3]`.
-
-### 6. Plan Spec
-
-Write the final auditable Plan Spec only after coordinate/evidence reasoning is stable.
-Important geometry should carry useful source references/confidence where supported.
-Record unresolved items in `uncertainties` rather than silently guessing.
-
-Commands:
+Selected zero-based boundary edges:
 
 ```text
-python scripts/opensu_plan.py template
-python scripts/opensu_plan.py template --output plan.json
-python scripts/opensu_plan.py lint plan.json
-python scripts/opensu_plan.py execute plan.json
+python scripts/opensu_layout.py space-walls --space Aftersales_Reception_01 --edges 1 2 --thickness 120
 ```
 
-Execution refuses lint errors and, by default, blocking uncertainties and root-name collisions.
-Do not bypass those guards just to make a task continue.
+If wall height is omitted, the Space's Level must define `floor_to_floor_mm`. Generated walls are one undoable SketchUp operation.
+
+Use read-only program guidance when useful:
+
+```text
+python scripts/opensu_layout.py space-strategy --space Showroom_01
+```
+
+A strategy may suggest checking glazing, preserving display/service bays, or using lighter partitions, but it must never generate dimensions or geometry by itself.
+
+## 4S dealership reasoning
+
+When supported by drawings:
+
+- showroom: preserve display bays; check plan/elevation evidence for continuous glazed frontage
+- workshop: use verified structural grids; preserve large service bays
+- aftersales reception: coordinate customer/vehicle interface; only wall evidenced edges
+- customer lounge/sales/office: use actual partition lines, not Space boundaries by default
+- delivery: preserve vehicle clearance and entrance evidence
+- parts/storage: respect enclosure/storage plan evidence
+- circulation: never wall across an intended route
+
+Do not infer fire separation, accessibility, structural capacity, service equipment clearance, or code compliance from a program label alone.
 
 ## General modeling order
 
-For ordinary modeling and for Plan Spec execution, reason in roughly this order:
+1. levels
+2. verified grids
+3. floor/slab
+4. slab/shaft openings
+5. grid-driven or explicit columns/beams
+6. exterior/interior walls
+7. openings
+8. door/window assemblies
+9. curtain walls/storefronts
+10. ceilings
+11. stairs
+12. roof/parapets/openings
+13. materials/Tags
+14. persistent Spaces
+15. Space-driven partitions only where explicitly evidenced
+16. inspect
+17. validate
+18. diagnose and smallest repair
+19. inspect + validate again
 
-1. levels/storey elevations
-2. floor/slab
-3. slab circulation/shaft openings
-4. primary columns and beams
-5. exterior/interior walls
-6. wall openings
-7. door/window assemblies
-8. curtain-wall/storefront assemblies
-9. ceilings
-10. stairs/circulation
-11. flat roof/parapets and roof openings
-12. materials and Tags
-13. persistent grids/spaces when drawing semantics are available
-14. inspect
-15. validate
-16. diagnose and smallest targeted repair
-17. inspect + validate again
+Use stable semantic names such as `Level_01`, `Column_3_B_Level_01`, `Beam_1_A_5_A_Level_02`,
+`Wall_South_001`, `CurtainWall_Showroom_001`, `Showroom_01`.
 
-Use stable names such as `Level_01`, `Floor_Level01_001`, `Column_A_3_001`,
-`Wall_South_001`, `Door_Main_001`, `CurtainWall_Showroom_001`, `Showroom_01`.
-
-## Core modeling commands
+## Core commands
 
 ```text
 python scripts/opensu.py status
@@ -251,32 +266,30 @@ python scripts/opensu_advanced.py create-polygon-slab ...
 python scripts/opensu_advanced.py create-polygon-ceiling ...
 ```
 
-## Building reasoning rules
+## Building rules
 
-- Levels, grids, and spaces are model semantics, not fake drawing geometry.
 - Wall thickness is centered on the supplied centerline.
 - Wall start/end direction matters because opening offsets are directional.
-- Put structural columns on verified grid intersections when documents show that relationship.
-- Beam endpoints represent the bottom centerline and share Z.
+- Beam endpoints represent bottom centerline and share Z.
 - Create wall openings before door/window assemblies.
-- Door/window assemblies read wall opening metadata; do not guess rotation.
-- Prefer curtain walls for continuous glazed dealership/showroom fronts when drawings support it.
-- Use slab openings where stairs/shafts penetrate upper floors.
+- Door/window assemblies read opening metadata; do not guess rotation.
+- Prefer curtain walls for continuous glazed fronts only when drawings support them.
+- Use slab openings where stairs/shafts penetrate floors.
 - Tags belong on Groups/Components, never raw edges/faces.
-- Functional space names/programs never override authoritative geometry evidence.
+- Functional labels never override drawing dimensions.
 
 ## Editing and repair
 
-For an existing wrong model, do not rebuild everything first.
+For existing model errors:
 
 ```text
 python scripts/opensu_repair.py diagnose
 python scripts/opensu_repair.py find ...
 ```
 
-Then apply the smallest edit, inspect, validate, and repeat only for remaining issues.
+Apply the smallest repair, inspect, validate, and repeat only for remaining issues.
 
-Single-entity editing:
+Single-entity edit:
 
 ```text
 python scripts/opensu_edit.py rename ...
@@ -294,59 +307,39 @@ python scripts/opensu_repair.py batch-visible ...
 python scripts/opensu_repair.py batch-transform ...
 ```
 
-Semantic transforms synchronize OpenSU coordinates. Re-inspect and validate after transforms/duplicates.
+Grid/Space-driven entities retain semantic provenance. If later edits move them away from their source grid/Space edge, validation reports semantic drift; never silently snap user geometry back.
 
 ## Controlled deletion
 
-Deletion is only through:
+Only use:
 
 ```text
 python scripts/opensu_repair.py delete-confirmed ...
 ```
 
-Use it only when the user explicitly asks to delete/remove something or explicitly authorizes
-removal as part of repair. Before deletion, resolve exact entity id + exact current name and
-confirm it is an OpenSU semantic root object. Never infer delete targets from partial names.
-Never delete loose user geometry automatically.
+Deletion requires explicit user intent, exact entity id, exact current name, and confirmation. Never infer delete targets from partial names or delete arbitrary loose user geometry.
 
-## 4S dealership semantic reasoning
+## Inspect / validation expectations
 
-When documents explicitly support the relationships, encode areas such as showroom, sales,
-reception, customer lounge, delivery, aftersales reception, workshop, parts/storage, office,
-and support/circulation.
+`inspect_model` exposes entities/levels plus `grids`, `spaces`, and semantic summary.
+`validate_model` checks ordinary geometry/manifold rules, semantic metadata, and grid/Space layout references.
 
-Useful cross-checks include:
+A finished architecture model should normally have:
 
-- showroom overall width/depth versus structural grid
-- public facade/curtain-wall height versus elevation/section
-- main entrance dimensions versus plan/elevation/schedule
-- customer reception/lounge adjacency from plan
-- workshop bay/module and service-door sizes
-- stair void and floor-to-floor rise
-- roof/parapet/brand fascia levels
+- no loose root architecture faces/edges
+- zero non-manifold OpenSU solids where solids are expected
+- valid levels/grids/spaces
+- no broken semantic layout references
+- final `valid=true`
 
-Do not infer fire separation, accessibility, structural capacity, or code compliance solely
-from a room program label. Those need explicit authoritative project information.
-
-## Inspect and validation expectations
-
-`inspect_model` should expose ordinary entities/levels plus:
-
-- `grids`
-- `spaces`
-- `semantic_summary.grids`
-- `semantic_summary.spaces`
-- `semantic_summary.space_area_m2`
-
-`validate_model` includes grid/space metadata checks in addition to existing geometry/manifold checks.
-A finished model should normally have zero loose architecture geometry, zero non-manifold OpenSU
-solids where solid geometry is expected, valid semantics, and final `valid=true`.
+Semantic drift warnings require review but are not automatically repaired.
 
 ## References
 
 - `references/drawing-reconstruction.md`
 - `references/multisheet-fusion.md`
 - `references/sheet-grid-spaces.md`
+- `references/grid-driven-layout.md`
 - `references/plan-spec.schema.json`
 - `references/examples/showroom-plan-v1.json`
 - `references/examples/showroom-multisheet-pack-v1.json`
@@ -354,14 +347,12 @@ solids where solid geometry is expected, valid semantics, and final `valid=true`
 - `references/tool-contract.md`
 - `references/advanced-geometry.md`
 
-## Safety and current limits
+## Current limits
 
 - Never use arbitrary Ruby execution.
-- Do not invent unsupported SketchUp capabilities.
-- Keep architecture in named Groups/Components rather than loose root geometry.
-- Preserve uncertainty instead of manufacturing dimensions.
-- Never average contradictory authoritative drawing dimensions.
-- Grid/Space metadata is persistent but non-geometric; visible grid annotations/room labels are not yet generated.
+- Grid/Space metadata is persistent but visible grid bubbles/room labels are not yet generated.
+- Grid-driven layout currently supports point resolution, columns, straight beams, and straight Space-edge partition walls.
+- It does not yet generate an entire structural framing system from a grid range automatically.
 - Straight, L, and U stairs are supported; spiral/multi-landing stairs are not.
 - Polygon floors/ceilings may be concave but not self-intersecting.
 - Pitched roofs and curved walls are not yet exposed.
