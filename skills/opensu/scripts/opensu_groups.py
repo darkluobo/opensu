@@ -50,6 +50,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--group", required=True)
     _member_args(p)
 
+    p = sub.add_parser("prune-missing", help="Remove stale references to members that no longer exist.")
+    p.add_argument("--group", required=True)
+
     p = sub.add_parser("rename", help="Rename a logical group.")
     p.add_argument("--group", required=True)
     p.add_argument("--new-name", required=True)
@@ -129,6 +132,11 @@ def main() -> int:
             result = _send(
                 "remove_entities_from_group",
                 {"group_name": args.group, "entity_ids": _member_ids(args)},
+            )
+        elif args.command == "prune-missing":
+            result = _send(
+                "prune_missing_entity_group_members",
+                {"group_name": args.group},
             )
         elif args.command == "rename":
             result = _send(
