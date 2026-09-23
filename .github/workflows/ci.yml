@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e . pytest
-      - run: python -m py_compile src/sketchup_mcp/*.py skills/opensu/scripts/opensu.py skills/opensu/scripts/opensu_advanced.py skills/opensu/scripts/opensu_edit.py skills/opensu/scripts/opensu_repair.py skills/opensu/scripts/opensu_plan.py skills/opensu/scripts/opensu_multisheet.py skills/opensu/scripts/opensu_semantics.py skills/opensu/scripts/opensu_layout.py
+      - run: python -m py_compile src/sketchup_mcp/*.py skills/opensu/scripts/opensu.py skills/opensu/scripts/opensu_advanced.py skills/opensu/scripts/opensu_edit.py skills/opensu/scripts/opensu_repair.py skills/opensu/scripts/opensu_plan.py skills/opensu/scripts/opensu_multisheet.py skills/opensu/scripts/opensu_semantics.py skills/opensu/scripts/opensu_layout.py skills/opensu/scripts/opensu_groups.py
       - run: python skills/opensu/scripts/opensu.py --help
       - run: python skills/opensu/scripts/opensu_advanced.py create-l-stair --help
       - run: python skills/opensu/scripts/opensu_edit.py transform --help
@@ -36,6 +36,9 @@ jobs:
       - run: python skills/opensu/scripts/opensu_layout.py --help
       - run: python skills/opensu/scripts/opensu_layout.py grid-column --help
       - run: python skills/opensu/scripts/opensu_layout.py space-walls --help
+      - run: python skills/opensu/scripts/opensu_groups.py --help
+      - run: python skills/opensu/scripts/opensu_groups.py create --help
+      - run: python skills/opensu/scripts/opensu_groups.py transform --help
       - run: python -m pytest tests/ -v
 
   ruby-syntax:
@@ -71,6 +74,8 @@ jobs:
           ruby -c su_mcp/su_mcp/drawing_semantics_validation.rb
           ruby -c su_mcp/su_mcp/semantic_layout.rb
           ruby -c su_mcp/su_mcp/semantic_layout_validation.rb
+          ruby -c su_mcp/su_mcp/semantic_grouping.rb
+          ruby -c su_mcp/su_mcp/semantic_grouping_validation.rb
 
   package-rbz:
     needs: [python-test, ruby-syntax]
@@ -88,7 +93,7 @@ jobs:
           from pathlib import Path
           from zipfile import ZipFile
 
-          rbz = Path('dist/opensu-v1.13.0.rbz')
+          rbz = Path('dist/opensu-v1.14.0.rbz')
           if not rbz.is_file():
               raise SystemExit('RBZ was not created')
           with ZipFile(rbz) as archive:
@@ -114,6 +119,8 @@ jobs:
               'su_mcp/su_mcp/drawing_semantics_validation.rb',
               'su_mcp/su_mcp/semantic_layout.rb',
               'su_mcp/su_mcp/semantic_layout_validation.rb',
+              'su_mcp/su_mcp/semantic_grouping.rb',
+              'su_mcp/su_mcp/semantic_grouping_validation.rb',
           }
           missing = sorted(required - names)
           if missing:
@@ -122,6 +129,6 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: opensu-v1.13.0
-          path: dist/opensu-v1.13.0.rbz
+          name: opensu-v1.14.0
+          path: dist/opensu-v1.14.0.rbz
           if-no-files-found: error
