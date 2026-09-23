@@ -4,7 +4,7 @@ description: >-
   Control a local SketchUp model from Codex through the installed OpenSU extension.
   Use for natural-language architectural modeling, reconstruction from one or many
   drawings/PDFs/images, persistent levels/grids/spaces, grid-driven structure,
-  space-driven partitions, persistent logical entity groups, inspection, organization,
+  space-driven partitions, persistent logical entity-group trees, inspection, organization,
   repair, and validation. Supports
   auditable Plan Specs, cross-sheet evidence fusion, floors, walls, columns, beams,
   openings, doors/windows, curtain walls, ceilings, stairs, roofs, Tags, materials,
@@ -308,6 +308,12 @@ python scripts/opensu_groups.py tag --group Showroom_Main_Structure --tag A-SHOW
 python scripts/opensu_groups.py transform --group Showroom_Main_Structure --translation 1000 0 0
 python scripts/opensu_groups.py duplicate --group Showroom_Main_Structure --new-group Showroom_Copy --translation 18000 0 0
 python scripts/opensu_groups.py dissolve --group Showroom_Copy
+python scripts/opensu_groups.py roots
+python scripts/opensu_groups.py tree --group Level_01
+python scripts/opensu_groups.py nest --parent Structure --child Columns
+python scripts/opensu_groups.py unnest --parent Structure --child Columns
+python scripts/opensu_groups.py move --group Columns --parent Level_02
+python scripts/opensu_groups.py move --group Columns --to-root
 ```
 
 Rules:
@@ -317,6 +323,12 @@ Rules:
 - Group membership must come from explicit user intent, drawing/semantic evidence, or an existing OpenSU group definition; never infer membership only from spatial proximity.
 - A member keeps its original OpenSU type, name, Tag, level/grid/Space references, and semantic metadata.
 - The same entity may belong to more than one logical group when that is intentional.
+- A child group has at most one parent. The hierarchy is a tree/forest, never a DAG with multiple parents.
+- Parent/child links use stable `group_id` values, so renaming a group does not break hierarchy.
+- Never create a parent-child link that would form a cycle; `A → B → A` is invalid.
+- Parent visibility, Tag, transform, and duplication recurse through all descendants and deduplicate entities that appear more than once.
+- A parent group may contain only child groups and zero direct entities.
+- Dissolving a parent promotes its children to the dissolved node's parent (or to roots) and never deletes child groups or geometry.
 - Group visibility and Tag operations apply to all live members in one undoable SketchUp operation.
 - Group transform uses one shared pivot for the whole assembly; it must not rotate each member around its own center.
 - Group transform/duplicate currently require OpenSU Groups as members.
@@ -398,7 +410,7 @@ Semantic drift warnings require review but are not automatically repaired.
 
 - Never use arbitrary Ruby execution.
 - Grid/Space metadata is persistent but visible grid bubbles/room labels are not yet generated.
-- Entity groups are logical/persistent only; OpenSU does not yet reparent them into physical nested SketchUp Groups.
+- Entity groups support recursive semantic parent-child trees, but OpenSU still does not reparent them into physical nested SketchUp Groups.
 - Grid-driven layout currently supports point resolution, columns, straight beams, and straight Space-edge partition walls.
 - It does not yet generate an entire structural framing system from a grid range automatically.
 - Straight, L, and U stairs are supported; spiral/multi-landing stairs are not.
