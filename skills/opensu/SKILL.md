@@ -64,6 +64,7 @@ Read when relevant:
 - `references/multisheet-fusion.md`
 - `references/sheet-grid-spaces.md`
 - `references/grid-driven-layout.md`
+- `references/semantic-grouping.md`
 - `references/plan-spec.schema.json`
 
 ### Sheet indexing
@@ -383,6 +384,7 @@ Semantic drift warnings require review but are not automatically repaired.
 - `references/multisheet-fusion.md`
 - `references/sheet-grid-spaces.md`
 - `references/grid-driven-layout.md`
+- `references/semantic-grouping.md`
 - `references/plan-spec.schema.json`
 - `references/examples/showroom-plan-v1.json`
 - `references/examples/showroom-multisheet-pack-v1.json`
