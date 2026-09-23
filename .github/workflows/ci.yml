@@ -39,6 +39,7 @@ jobs:
       - run: python skills/opensu/scripts/opensu_groups.py --help
       - run: python skills/opensu/scripts/opensu_groups.py create --help
       - run: python skills/opensu/scripts/opensu_groups.py transform --help
+      - run: python skills/opensu/scripts/opensu_groups.py prune-missing --help
       - run: python -m pytest tests/ -v
 
   ruby-syntax:
