@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.15.0] — 2026-09-23
+
+### Added
+- Recursive Group-of-Groups parent-child hierarchy with stable group IDs.
+- Nest, unnest, reparent, move-to-root, root listing, and recursive tree inspection.
+- Parent-only organizational groups with zero direct entity members.
+- Recursive visibility, Tag, shared-pivot transform, and subtree duplication.
+- Safe dissolve semantics that promote child groups instead of deleting them.
+- Cycle, multiple-parent, missing-child, and maximum-depth validation.
+- Automatic migration of legacy v1.14 groups when the first hierarchy mutation occurs.
+
+### Safety
+- Hierarchy remains semantic only; native SketchUp geometry is not reparented.
+- A child group may have only one parent.
+- Cycles such as A → B → A are rejected before persistence.
+- Subtree operations deduplicate entity members by persistent id.
+
 ## [1.14.0] — 2026-09-23
 
 ### Added
