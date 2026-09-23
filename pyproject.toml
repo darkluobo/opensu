@@ -1,7 +1,7 @@
 [project]
 name = "opensu-sketchup"
-version = "1.14.0"
-description = "OpenSU — open-source AI modeling agent for SketchUp with bounded local automation, drawing reconstruction, semantic grouping, and semantic building workflows"
+version = "1.15.0"
+description = "OpenSU — open-source AI modeling agent for SketchUp with bounded local automation, drawing reconstruction, hierarchical semantic grouping, and semantic building workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
