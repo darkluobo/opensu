@@ -8,6 +8,7 @@ module SU_MCP
       create_entity_group
       add_entities_to_group
       remove_entities_from_group
+      prune_missing_entity_group_members
       rename_entity_group
       delete_entity_group
       list_entity_groups
@@ -42,6 +43,7 @@ module SU_MCP
         when 'create_entity_group' then create_entity_group(args)
         when 'add_entities_to_group' then add_entities_to_group(args)
         when 'remove_entities_from_group' then remove_entities_from_group(args)
+        when 'prune_missing_entity_group_members' then prune_missing_entity_group_members(args)
         when 'rename_entity_group' then rename_entity_group(args)
         when 'delete_entity_group' then delete_entity_group(args)
         when 'list_entity_groups' then list_entity_groups(args)
@@ -151,6 +153,33 @@ module SU_MCP
       end
 
       entity_group_result(model, group)
+    end
+
+    def prune_missing_entity_group_members(params)
+      model = Sketchup.active_model
+      groups = entity_groups(model)
+      group = find_entity_group!(groups, params['group_name'])
+      ids = Array(group['member_persistent_ids']).map(&:to_i)
+      live_ids = ids.select { |persistent_id| find_root_entity_by_persistent_id(model, persistent_id) }
+      missing_ids = ids - live_ids
+
+      return entity_group_result(model, group).merge(pruned_count: 0, pruned_persistent_ids: []) if missing_ids.empty?
+      raise 'All group members are missing; dissolve the group instead.' if live_ids.empty?
+
+      model.start_operation('OpenSU: Prune Missing Group Members', true)
+      begin
+        group['member_persistent_ids'] = live_ids
+        persist_entity_groups!(model, groups)
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      end
+
+      entity_group_result(model, group).merge(
+        pruned_count: missing_ids.length,
+        pruned_persistent_ids: missing_ids
+      )
     end
 
     def rename_entity_group(params)
