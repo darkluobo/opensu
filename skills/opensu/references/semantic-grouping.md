@@ -34,6 +34,7 @@ A group can be:
 - inspected/listed;
 - renamed;
 - have members added or removed;
+- prune stale references after a member was deleted elsewhere;
 - shown/hidden as a set;
 - assigned one Tag as a set;
 - transformed around one shared pivot;
@@ -65,6 +66,8 @@ It must not:
 - infer destructive intent.
 
 Member deletion remains a separate controlled-delete workflow.
+
+If validation reports a deleted/missing member, `prune-missing` may remove only that stale persistent-id reference. If every member is missing, dissolve the group instead.
 
 ## Membership reasoning
 
