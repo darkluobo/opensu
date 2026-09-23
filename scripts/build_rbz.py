@@ -8,7 +8,7 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = ROOT / "dist" / "opensu-v1.13.0.rbz"
+DEFAULT_OUTPUT = ROOT / "dist" / "opensu-v1.14.0.rbz"
 
 
 def build_rbz(output: Path = DEFAULT_OUTPUT) -> Path:
