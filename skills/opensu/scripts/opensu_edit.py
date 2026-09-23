@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Non-destructive OpenSU editing commands for the sketchup-modeling Codex Skill."""
+"""Non-destructive OpenSU editing commands for the $opensu Codex Skill."""
 
 from __future__ import annotations
 
