@@ -301,6 +301,7 @@ python scripts/opensu_groups.py inspect --group Showroom_Structure
 python scripts/opensu_groups.py create --group Showroom_Structure --name Wall_001 --name Column_1_A
 python scripts/opensu_groups.py add --group Showroom_Structure --name Beam_1_A_3_A
 python scripts/opensu_groups.py remove --group Showroom_Structure --name Beam_1_A_3_A
+python scripts/opensu_groups.py prune-missing --group Showroom_Structure
 python scripts/opensu_groups.py rename --group Showroom_Structure --new-name Showroom_Main_Structure
 python scripts/opensu_groups.py visible --group Showroom_Main_Structure --hide
 python scripts/opensu_groups.py tag --group Showroom_Main_Structure --tag A-SHOWROOM
@@ -321,6 +322,7 @@ Rules:
 - Group transform/duplicate currently require OpenSU Groups as members.
 - `dissolve` removes only the grouping relationship. It must never delete member geometry.
 - If a group references a member that was manually deleted, validation must report the broken semantic reference rather than silently dropping it.
+- Use `prune-missing` only after that stale reference is confirmed; it removes missing membership ids but never deletes live geometry.
 
 ## Editing and repair
 
