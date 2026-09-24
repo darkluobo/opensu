@@ -4,7 +4,8 @@ description: >-
   Control a local SketchUp model from Codex through the installed OpenSU extension.
   Use for natural-language architectural modeling, reconstruction from one or many
   drawings/PDFs/images, persistent levels/grids/spaces, grid-driven structure,
-  space-driven partitions, inspection, organization, repair, and validation. Supports
+  space-driven partitions, persistent logical entity groups, inspection, organization,
+  repair, and validation. Supports
   auditable Plan Specs, cross-sheet evidence fusion, floors, walls, columns, beams,
   openings, doors/windows, curtain walls, ceilings, stairs, roofs, Tags, materials,
   semantic edits, batch repair, and controlled deletion.
@@ -22,6 +23,7 @@ Use the bundled deterministic bridges instead of ad-hoc socket code or arbitrary
 - `scripts/opensu_multisheet.py` — cross-sheet evidence reconciliation.
 - `scripts/opensu_semantics.py` — drawing sheet index plus persistent grids/spaces.
 - `scripts/opensu_layout.py` — grid intersection, grid columns/beams, Space partitions, advisory program strategy.
+- `scripts/opensu_groups.py` — persistent logical grouping, group-wide visibility/Tag/transform/duplication.
 
 Resolve scripts relative to this Skill directory.
 
@@ -32,7 +34,7 @@ Resolve scripts relative to this Skill directory.
 3. Run `python scripts/opensu.py inspect` before mutations.
 4. Use millimetres for architecture.
 5. Preserve existing user geometry unless the request explicitly changes it.
-6. Inspect existing levels, grids, spaces, names, Tags, and semantic layout relationships before creating duplicates.
+6. Inspect existing levels, grids, spaces, entity groups, names, Tags, and semantic layout relationships before creating duplicates.
 
 ## Drawing-set workflow
 
@@ -62,6 +64,7 @@ Read when relevant:
 - `references/multisheet-fusion.md`
 - `references/sheet-grid-spaces.md`
 - `references/grid-driven-layout.md`
+- `references/semantic-grouping.md`
 - `references/plan-spec.schema.json`
 
 ### Sheet indexing
@@ -278,6 +281,49 @@ python scripts/opensu_advanced.py create-polygon-ceiling ...
 - Tags belong on Groups/Components, never raw edges/faces.
 - Functional labels never override drawing dimensions.
 
+## Semantic entity grouping
+
+Use logical OpenSU entity groups when several existing semantic entities should be managed as one assembly without changing the real SketchUp hierarchy.
+
+Typical uses:
+
+- showroom facade or structure set
+- one entrance assembly
+- one floor's columns or partitions
+- workshop bay elements
+- furniture/display collections
+
+Commands:
+
+```text
+python scripts/opensu_groups.py list
+python scripts/opensu_groups.py inspect --group Showroom_Structure
+python scripts/opensu_groups.py create --group Showroom_Structure --name Wall_001 --name Column_1_A
+python scripts/opensu_groups.py add --group Showroom_Structure --name Beam_1_A_3_A
+python scripts/opensu_groups.py remove --group Showroom_Structure --name Beam_1_A_3_A
+python scripts/opensu_groups.py prune-missing --group Showroom_Structure
+python scripts/opensu_groups.py rename --group Showroom_Structure --new-name Showroom_Main_Structure
+python scripts/opensu_groups.py visible --group Showroom_Main_Structure --hide
+python scripts/opensu_groups.py tag --group Showroom_Main_Structure --tag A-SHOWROOM
+python scripts/opensu_groups.py transform --group Showroom_Main_Structure --translation 1000 0 0
+python scripts/opensu_groups.py duplicate --group Showroom_Main_Structure --new-group Showroom_Copy --translation 18000 0 0
+python scripts/opensu_groups.py dissolve --group Showroom_Copy
+```
+
+Rules:
+
+- Logical grouping does **not** create a parent SketchUp Group and does not reparent member geometry.
+- Membership is persisted by SketchUp persistent id, so renaming a member does not break the group.
+- Group membership must come from explicit user intent, drawing/semantic evidence, or an existing OpenSU group definition; never infer membership only from spatial proximity.
+- A member keeps its original OpenSU type, name, Tag, level/grid/Space references, and semantic metadata.
+- The same entity may belong to more than one logical group when that is intentional.
+- Group visibility and Tag operations apply to all live members in one undoable SketchUp operation.
+- Group transform uses one shared pivot for the whole assembly; it must not rotate each member around its own center.
+- Group transform/duplicate currently require OpenSU Groups as members.
+- `dissolve` removes only the grouping relationship. It must never delete member geometry.
+- If a group references a member that was manually deleted, validation must report the broken semantic reference rather than silently dropping it.
+- Use `prune-missing` only after that stale reference is confirmed; it removes missing membership ids but never deletes live geometry.
+
 ## Editing and repair
 
 For existing model errors:
@@ -321,15 +367,15 @@ Deletion requires explicit user intent, exact entity id, exact current name, and
 
 ## Inspect / validation expectations
 
-`inspect_model` exposes entities/levels plus `grids`, `spaces`, and semantic summary.
-`validate_model` checks ordinary geometry/manifold rules, semantic metadata, and grid/Space layout references.
+`inspect_model` exposes entities/levels plus `grids`, `spaces`, `entity_groups`, and semantic summary.
+`validate_model` checks ordinary geometry/manifold rules, semantic metadata, grid/Space layout references, and persistent entity-group membership.
 
 A finished architecture model should normally have:
 
 - no loose root architecture faces/edges
 - zero non-manifold OpenSU solids where solids are expected
 - valid levels/grids/spaces
-- no broken semantic layout references
+- no broken semantic layout or entity-group references
 - final `valid=true`
 
 Semantic drift warnings require review but are not automatically repaired.
@@ -340,6 +386,7 @@ Semantic drift warnings require review but are not automatically repaired.
 - `references/multisheet-fusion.md`
 - `references/sheet-grid-spaces.md`
 - `references/grid-driven-layout.md`
+- `references/semantic-grouping.md`
 - `references/plan-spec.schema.json`
 - `references/examples/showroom-plan-v1.json`
 - `references/examples/showroom-multisheet-pack-v1.json`
@@ -351,6 +398,7 @@ Semantic drift warnings require review but are not automatically repaired.
 
 - Never use arbitrary Ruby execution.
 - Grid/Space metadata is persistent but visible grid bubbles/room labels are not yet generated.
+- Entity groups are logical/persistent only; OpenSU does not yet reparent them into physical nested SketchUp Groups.
 - Grid-driven layout currently supports point resolution, columns, straight beams, and straight Space-edge partition walls.
 - It does not yet generate an entire structural framing system from a grid range automatically.
 - Straight, L, and U stairs are supported; spiral/multi-landing stairs are not.

@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.14.0] — 2026-09-23
+
+### Added
+- Persistent OpenSU logical entity groups stored at model level by SketchUp persistent id.
+- Group create/add/remove/rename/dissolve/list/inspect operations.
+- Group-wide visibility, Tag assignment, shared-pivot transform, and duplication.
+- `opensu_groups.py` bridge for the `$opensu` Codex Skill.
+- Validation for missing/stale group members and duplicate group metadata.
+
+### Safety
+- Logical groups do not reparent SketchUp geometry.
+- Dissolving a group removes only the grouping relationship and never deletes member geometry.
+- Group transform/duplicate remains bounded to OpenSU Groups and uses one shared assembly pivot.
+
 ## [1.1.0] — 2026-07-02
 
 ### Changed
