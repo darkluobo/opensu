@@ -3,7 +3,7 @@ name: CI
 on:
   push:
   pull_request:
-    branches: [main, phase1-architecture-mvp, phase2-building-elements, phase2-storefront-multi-openings, phase3-levels-stairs-roof, phase3-advanced-stairs-openings, phase4-edit-repair, phase4-auto-repair, phase5-drawing-to-model, phase5-multisheet-fusion, phase5-sheet-grid-spaces, phase5-grid-driven-layout]
+    branches: [main, phase1-architecture-mvp, phase2-building-elements, phase2-storefront-multi-openings, phase3-levels-stairs-roof, phase3-advanced-stairs-openings, phase4-edit-repair, phase4-auto-repair, phase5-drawing-to-model, phase5-multisheet-fusion, phase5-sheet-grid-spaces, phase5-grid-driven-layout, phase6-semantic-grouping]
   workflow_dispatch:
 
 concurrency:
@@ -40,6 +40,9 @@ jobs:
       - run: python skills/opensu/scripts/opensu_groups.py create --help
       - run: python skills/opensu/scripts/opensu_groups.py transform --help
       - run: python skills/opensu/scripts/opensu_groups.py prune-missing --help
+      - run: python skills/opensu/scripts/opensu_groups.py tree --help
+      - run: python skills/opensu/scripts/opensu_groups.py nest --help
+      - run: python skills/opensu/scripts/opensu_groups.py move --help
       - run: python -m pytest tests/ -v
 
   ruby-syntax:
@@ -77,6 +80,8 @@ jobs:
           ruby -c su_mcp/su_mcp/semantic_layout_validation.rb
           ruby -c su_mcp/su_mcp/semantic_grouping.rb
           ruby -c su_mcp/su_mcp/semantic_grouping_validation.rb
+          ruby -c su_mcp/su_mcp/semantic_group_hierarchy.rb
+          ruby -c su_mcp/su_mcp/semantic_group_hierarchy_validation.rb
 
   package-rbz:
     needs: [python-test, ruby-syntax]
@@ -94,7 +99,7 @@ jobs:
           from pathlib import Path
           from zipfile import ZipFile
 
-          rbz = Path('dist/opensu-v1.14.0.rbz')
+          rbz = Path('dist/opensu-v1.15.0.rbz')
           if not rbz.is_file():
               raise SystemExit('RBZ was not created')
           with ZipFile(rbz) as archive:
@@ -122,6 +127,8 @@ jobs:
               'su_mcp/su_mcp/semantic_layout_validation.rb',
               'su_mcp/su_mcp/semantic_grouping.rb',
               'su_mcp/su_mcp/semantic_grouping_validation.rb',
+              'su_mcp/su_mcp/semantic_group_hierarchy.rb',
+              'su_mcp/su_mcp/semantic_group_hierarchy_validation.rb',
           }
           missing = sorted(required - names)
           if missing:
@@ -130,6 +137,6 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: opensu-v1.14.0
-          path: dist/opensu-v1.14.0.rbz
+          name: opensu-v1.15.0
+          path: dist/opensu-v1.15.0.rbz
           if-no-files-found: error

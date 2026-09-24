@@ -31,9 +31,17 @@ module SU_MCP
         warnings << "Entity group #{name.inspect} has the same name as a root entity." if !name.empty? && root_conflict
 
         ids = group['member_persistent_ids']
-        unless ids.is_a?(Array) && !ids.empty?
-          errors << "Entity group #{name.inspect} must contain at least one member."
+        child_ids = group['child_group_ids']
+        unless ids.is_a?(Array)
+          errors << "Entity group #{name.inspect} has invalid member_persistent_ids."
           next
+        end
+        unless child_ids.nil? || child_ids.is_a?(Array)
+          errors << "Entity group #{name.inspect} has invalid child_group_ids."
+          child_ids = []
+        end
+        if ids.empty? && Array(child_ids).empty?
+          errors << "Entity group #{name.inspect} must contain at least one entity member or child group."
         end
 
         if ids.length > ENTITY_GROUP_MEMBER_LIMIT

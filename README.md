@@ -2,7 +2,7 @@
 
 **OpenSU** is an open-source AI modeling agent for SketchUp. It connects Codex to a local SketchUp extension so natural-language instructions, architectural drawings, semantic building data, and validation workflows can become structured `.skp` geometry.
 
-> Current development checkpoint: **v1.14.0 / Phase 6**
+> Current development checkpoint: **v1.15.0 / Phase 6.1**
 
 ## What OpenSU can do
 
@@ -16,6 +16,7 @@
 - Grid-driven structure such as `3/B` column placement and beam spans
 - Space-driven partition generation when the drawing explicitly supports those walls
 - Persistent logical entity groups with group-wide visibility, Tags, transforms, and duplication
+- Recursive Group-of-Groups hierarchy with stable group IDs, cycle prevention, reparenting, and subtree duplication
 - Geometry and semantic validation before completion
 
 ## Architecture
@@ -58,7 +59,7 @@ python scripts/build_rbz.py
 The current build creates:
 
 ```text
-dist/opensu-v1.14.0.rbz
+dist/opensu-v1.15.0.rbz
 ```
 
 Install the RBZ through SketchUp Extension Manager, restart SketchUp, then start:
@@ -92,7 +93,7 @@ $opensu
 
 ## Project status
 
-Phase 6 adds persistent semantic entity grouping on top of the drawing-set, Grid, Space, editing, and validation stack. Groups are logical relationships rather than physical SketchUp nesting, so existing OpenSU geometry and semantic references remain stable. The next planned work is broader batch structural generation, optional nested-group support, and higher-level dealership layout automation.
+Phase 6.1 adds recursive parent-child Group-of-Groups semantics on top of persistent entity grouping. Hierarchy links use stable group IDs, form a cycle-free tree, and recurse safely through visibility, Tags, transforms, duplication, inspection, and validation. Groups remain semantic relationships rather than native SketchUp reparenting, so existing OpenSU geometry remains stable.
 
 ## Provenance and license
 

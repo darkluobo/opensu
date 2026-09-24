@@ -24,8 +24,15 @@ def test_group_cli_exposes_expected_commands():
     parser = opensu_groups.build_parser()
     for argv in (
         ["list"],
+        ["roots"],
         ["inspect", "--group", "Showroom"],
+        ["tree", "--group", "Level_01"],
         ["create", "--group", "Showroom", "--id", "1"],
+        ["create", "--group", "Structure", "--child-group", "Columns"],
+        ["nest", "--parent", "Level_01", "--child", "Structure"],
+        ["unnest", "--parent", "Level_01", "--child", "Structure"],
+        ["move", "--group", "Structure", "--parent", "Level_02"],
+        ["move", "--group", "Structure", "--to-root"],
         ["add", "--group", "Showroom", "--id", "2"],
         ["remove", "--group", "Showroom", "--id", "2"],
         ["prune-missing", "--group", "Showroom"],
@@ -81,3 +88,44 @@ def test_group_validation_detects_missing_persistent_members():
     ).read_text(encoding="utf-8")
     assert "references missing member persistent id" in ruby
     assert "entity_group_memberships" in ruby
+
+
+
+def test_group_create_allows_child_only_parent():
+    parser = opensu_groups.build_parser()
+    args = parser.parse_args(
+        ["create", "--group", "Structure", "--child-group", "Columns"]
+    )
+    assert opensu_groups._member_ids(args, required=False) == []
+    assert args.child_groups == ["Columns"]
+
+
+def test_ruby_hierarchy_uses_stable_group_ids_and_cycle_guards():
+    ruby = (
+        ROOT / "su_mcp" / "su_mcp" / "semantic_group_hierarchy.rb"
+    ).read_text(encoding="utf-8")
+    for tool in (
+        "add_child_entity_group",
+        "remove_child_entity_group",
+        "move_entity_group",
+        "inspect_entity_group_tree",
+        "list_entity_group_roots",
+    ):
+        assert tool in ruby
+    assert "group_id" in ruby
+    assert "child_group_ids" in ruby
+    assert "SecureRandom.uuid" in ruby
+    assert "would create a cycle" in ruby
+    assert "shared pivot" not in ruby.lower() or "pivot_mm" in ruby
+    assert "erase!" not in ruby
+    assert "eval(" not in ruby
+
+
+def test_hierarchy_validation_enforces_tree_and_depth():
+    ruby = (
+        ROOT / "su_mcp" / "su_mcp" / "semantic_group_hierarchy_validation.rb"
+    ).read_text(encoding="utf-8")
+    assert "group hierarchy must be a tree" in ruby
+    assert "hierarchy cycle detected" in ruby
+    assert "maximum depth" in ruby
+    assert "legacy_entity_groups" in ruby
